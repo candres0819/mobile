@@ -26,6 +26,19 @@ function wlCommonInit(){
 	$("#slider-tronco").owlCarousel();
 	$("#slider-cadera").owlCarousel();
 	$("#slider-pies").owlCarousel();
+	
+	console.log("load");
+	$.ajax({
+		url : "http://wpsmed21.pragma.com.co:10141/wps/portal",
+		type : "GET",
+		dataType : "html",
+		success : function(data) {
+			$("#index").html(data);
+		},
+		error : function(data) {
+
+		}
+	});load();
 }
 
 /* JavaScript content from js/main.js in folder android */

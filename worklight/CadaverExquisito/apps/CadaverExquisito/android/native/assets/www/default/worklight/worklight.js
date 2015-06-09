@@ -67,7 +67,7 @@ try{var m=At(u,"return "+h).apply(e,i)}catch(b){throw b.source=h,b}return t?m(t)
 for(t=a.createCallback(t,e);o--&&t(n[o],o,n);)r++}else if(r=t,null==r||e)return n[u-1];return V(n,te(0,u-r))}},a.take=gt,a.head=gt,me(a,function(n,t){a.prototype[t]||(a.prototype[t]=function(t,e){var r=n(this.__wrapped__,t,e);return null==t||e&&typeof t!="function"?r:new K(r)})}),a.VERSION="1.1.1",a.prototype.toString=function(){return qt(this.__wrapped__)},a.prototype.value=xt,a.prototype.valueOf=xt,pe(["join","pop","shift"],function(n){var t=Ft[n];a.prototype[n]=function(){return t.apply(this.__wrapped__,arguments)
 }}),pe(["push","reverse","sort","unshift"],function(n){var t=Ft[n];a.prototype[n]=function(){return t.apply(this.__wrapped__,arguments),this}}),pe(["concat","slice","splice"],function(n){var t=Ft[n];a.prototype[n]=function(){return new K(t.apply(this.__wrapped__,arguments))}}),ie.spliceObjects||pe(["pop","shift","splice"],function(n){var t=Ft[n],e="splice"==n;a.prototype[n]=function(){var n=this.__wrapped__,r=t.apply(n,arguments);return 0===n.length&&delete n[0],e?new K(r):r}}),a}var e,r=typeof exports=="object"&&exports,u=typeof module=="object"&&module&&module.exports==r&&module,a=typeof global=="object"&&global;
 a.global===a&&(n=a);var o=0,i={},f=/\b__p\+='';/g,c=/\b(__p\+=)''\+/g,l=/(__e\(.*?\)|\b__t\))\+'';/g,p=/&(?:amp|lt|gt|quot|#39);/g,s=/\$\{([^\\}]*(?:\\.[^\\}]*)*)\}/g,v=/\w*$/,g=/<%=([\s\S]+?)%>/g,h=/^0+(?=.$)/,y=/($^)/,m=/[&<>"']/g,d=/['\n\r\t\u2028\u2029\\]/g,b="Array Boolean Date Function Math Number Object RegExp String _ attachEvent clearTimeout isFinite isNaN parseInt setImmediate setTimeout".split(" "),_="constructor hasOwnProperty isPrototypeOf propertyIsEnumerable toLocaleString toString valueOf".split(" "),C="[object Arguments]",w="[object Array]",j="[object Boolean]",k="[object Date]",x="[object Function]",O="[object Number]",E="[object Object]",S="[object RegExp]",A="[object String]",I={};
-I[x]=!1,I[C]=I[w]=I[j]=I[k]=I[O]=I[E]=I[S]=I[A]=!0;var P={"boolean":!1,"function":!0,object:!0,number:!1,string:!1,undefined:!1},N={"\\":"\\","'":"'","\n":"n","\r":"r","	":"t","\u2028":"u2028","\u2029":"u2029"},$=t();typeof define=="function"&&typeof define.amd=="object"&&define.amd?(n._=$,define(function(){return $})):r&&!r.nodeType?u?(u.exports=$)._=$:r._=$:n._=$})(this);
+I[x]=!1,I[C]=I[w]=I[j]=I[k]=I[O]=I[E]=I[S]=I[A]=!0;var P={"boolean":!1,"function":!0,object:!0,number:!1,string:!1,undefined:!1},N={"\\":"\\","'":"'","\n":"n","\r":"r","	":"t","\u2028":"u2028","\u2029":"u2029"},$=t();typeof define=="function"&&typeof define.amd=="object"&&define.amd&&false?(n._=$,define(function(){return $})):r&&!r.nodeType?u?(u.exports=$)._=$:r._=$:n._=$})(this);
 
 var WL_ = _;
 var _ = undefined;
@@ -1628,12 +1628,21 @@ __WLUtils = function() {
         };
 
         xhr.send("");
+        var networkType = navigator.connection.type; 
+        var reachTimeout = 6000; 
+        //WL.Logger.debug("Network type is " + networkType) ;
+        if (networkType == Connection.CELL_2G || networkType == Connection.UNKNOWN || 
+        		networkType == Connection.CELL ){
+        	reachTimeout = 30000; 
+        }
+        //WL.Logger.debug("Reach timeout is " + reachTimeout) ;
+        
         var xhrTimeout = setTimeout(function() {
             if (!isCheckDone) {
                 xhr.abort();
                 WL.Utils.dispatchWLEvent(__WL.InternalEvents.REACHABILITY_TEST_FAILURE);
             }
-        }, 6000);
+        }, reachTimeout);
     };
 
     /**
@@ -1952,7 +1961,10 @@ __WLUtils = function() {
         // if "path" is an absolute URL we just use it
         if (/^[a-z]+:\/\//i.test(path)) {
             resultURL = path;
-        } else if (path.indexOf("/") === 0) {
+        }//check itms-services (download app inside app url) and if it is that, accept it.
+        else if ((WL.Client.getEnvironment() === WL.Environment.IPHONE || WL.Client.getEnvironment() === WL.Environment.IPAD) && path.indexOf("itms-services") === 0) {
+        	resultURL = path;
+        }else if (path.indexOf("/") === 0) {
             // In case using absolute url like "/random" it must be under
             // app/services
             var appServicesUrl = WL.Client.getAppProperty(WL.AppProp.APP_SERVICES_URL);
@@ -2498,6 +2510,7 @@ __WLSimpleDialog = function() {
        		result--;
             
         } else if (WL.StaticAppProps.ENVIRONMENT == WL.Environment.BLACKBERRY) {
+        } else if (WL.StaticAppProps.ENVIRONMENT == WL.Environment.WINDOWS8) {
         } else {
             WL.SimpleDialog.__dialog.hide();
             WL.SimpleDialog.__dialog = null;
@@ -2553,7 +2566,9 @@ __WLSimpleDialog = function() {
      * @param option
      *            Optional. When native dialog is not available for the current
      *            environment. An object of the following form: { title: string,
-     *            text: string }
+     *            text: string, isModal: boolean } (isModal has effect for Android only and 
+     *            is set by diagnostic dialog when it doesn't display Close button; this is 
+     *            needed to prevent users from working online when direct update failed.)
      */
     this.show = function(title, text, buttons, options) {
         var wlDialogContainer = WLJSX.$('WLdialogContainer');
@@ -2592,12 +2607,15 @@ __WLSimpleDialog = function() {
             	}
             	
             	// modal dialog in direct update 
-                var isAndroidDirectUpdateModal = (title == WL.ClientMessages.directUpdateNotificationTitle);
+           	 	var isAndroidDirectUpdateModal = (title == WL.ClientMessages.directUpdateNotificationTitle || title == WL.ClientMessages.directUpdateErrorTitle);
                 // if there is a single button which isn't close in remote disable, we should have a modal dialog
                 var isAndroidRemoteDisableModal = (!WL.Client.isShowCloseButtonOnRemoteDisable() && buttons.length == 1 && buttons[0].text.indexOf(WL.ClientMessages.close) == -1);
 
-                var isModal =  (isAndroidDirectUpdateModal || isAndroidRemoteDisableModal);
-                
+                // modal dialog if direct update failed, close button is hidden and this is a 
+                // diagnostic dialog with request timeout (so in this case options.isModal is true)
+                var isModal =  (isAndroidDirectUpdateModal || isAndroidRemoteDisableModal || 
+                				typeof options != 'undefined' && options != null && options.isModal);
+                  
                 return isModal;
             }
             
@@ -2628,6 +2646,7 @@ __WLSimpleDialog = function() {
             	}
             }
             messageDialog.showAsync();
+            this.__callback(buttons.length);
         } else {
             var dialogOptions = options || {};
 
@@ -3185,8 +3204,11 @@ window.WLJSX.Ajax.WLRequest = WLJSX.Class.create({
 			 * @param responseToPostAnswers
 			 */
             onWlSuccess : function(transport) {
+            	if (this.isTimeout) {
+            		return;
+            	}
             	var containsChallenges = this.onSuccessParent(transport);
-                
+            	
                 if (!containsChallenges) {
                     this.onSuccess(transport);
                 }
@@ -4054,7 +4076,8 @@ __WL.InternalEvents = {
 
 var __WLEvents = {
     WORKLIGHT_IS_CONNECTED : "WL:WORKLIGHT_IS_CONNECTED",
-    WORKLIGHT_IS_DISCONNECTED : "WL:WORKLIGHT_IS_DISCONNECTED"
+    WORKLIGHT_IS_DISCONNECTED : "WL:WORKLIGHT_IS_DISCONNECTED",
+    BEFORE_DIRECT_UPDATE : "WL:BEFORE_DIRECT_UPDATE"
 };
 
 __WL.prototype.Events = __WLEvents;
@@ -4168,46 +4191,70 @@ WL.Device = new __WLDevice;
  */
 
 __WLDiagnosticDialog = function() {
-    this.showDialog = function(title, messageText, allowReload, allowDetails, response, customErrorMsg) {
-        var buttons = [];
-        if (allowReload) {
-            buttons.push({
-                text : WL.ClientMessages.reload,
-                handler : function() {
-                    WL.Client.reloadApp();
-                }
-            });
-        }
-        if (WL.App.close) {
-            buttons.push({
-                text : WL.ClientMessages.close,
-                handler : function() {
-                }
-            });
-        }
+	this.showDialog = function(title, messageText, allowReload, allowDetails, response, customErrorMsg) {
+		try {
+	    	WL.App.readUserPref('directUpdateResult', {
+	    			onSuccess: buildButtonArrayAndShowDialog, 
+	    			onFailure: buildButtonArrayAndShowDialog
+	    	});
+		} catch(err) {
+			buildButtonArrayAndShowDialog(true);
+		}
+    	
+    	function buildButtonArrayAndShowDialog(directUpdateResult) {
+        	var buttons = [];
+        	
+        	if (allowReload) {
+                buttons.push({
+                    text : WL.ClientMessages.reload,
+                    handler : function() {
+                        WL.Client.reloadApp();
+                    }
+                });
+            }
 
-        // Troubleshooting button
-        if (allowDetails && WL.EnvProfile.isEnabled(WL.EPField.SUPPORT_DIAGNOSTIC)) {
-            buttons.push({
-                text : WL.ClientMessages.details,
-                handler : function() {
-                    WL.Device.getNetworkInfo(function(networkInfoObject) {
-                        showDiagnosticTable(response, networkInfoObject, customErrorMsg);
-                    });
-                }
-            });
-        }
+        	// modal diagnostic dialog is displayed only when Direct Update failed 
+            // (this is retrieved from users prefs; the flag itself is set by native plugin) and
+            // the developer decided to hide the Close button after DU failure. 
+        	// For other than iOS and Android environments 'directUpdateResult' will always be true 
+        	// (until readUserPref is supported in specific environment; in that case it will be null).
+            var isModalDiagnosticDialog = directUpdateResult === 'false' && 
+										  !WL.Client.isShowCloseButtonOnDirectUpdateFailure();
 
-        if (buttons.length == 0) {
-            buttons.push({
-                text : WL.ClientMessages.close,
-                handler : function() {
-                }
-            });
+            // Close button is NOT added for modal diagnostic dialog. This should prevent the 
+            // user from working with application
+            if (WL.App.close && !isModalDiagnosticDialog) {
+                buttons.push({
+                    text : WL.ClientMessages.close,
+                    handler : function() {
+                    }
+                });
+            }
+
+            // Troubleshooting button
+            if (allowDetails && WL.EnvProfile.isEnabled(WL.EPField.SUPPORT_DIAGNOSTIC)) {
+                buttons.push({
+                    text : WL.ClientMessages.details,
+                    handler : function() {
+                        WL.Device.getNetworkInfo(function(networkInfoObject) {
+                            showDiagnosticTable(response, networkInfoObject, customErrorMsg);
+                        });
+                    }
+                });
+            }
+
+            if (buttons.length == 0) {
+                buttons.push({
+                    text : WL.ClientMessages.close,
+                    handler : function() {
+                    }
+                });
+            }
+            
+            WL.SimpleDialog.show(title, messageText, buttons, {isModal : isModalDiagnosticDialog});
         }
-        WL.SimpleDialog.show(title, messageText, buttons);
     };
-
+    
     // Diagnostics functions
     function showDiagnosticTable(response, networkInfo, customErrorMsg) {
         // Back again with networkInfo object
@@ -4378,271 +4425,447 @@ WL.DiagnosticDialog = new __WLDiagnosticDialog;
 * disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
 */
 
-WL.Logger = (function (jQuery, lodash) {
+WL.Logger = (function (jQuery) {
 
-	'use strict';
+  var $ = jQuery;
 
-	var $ = jQuery;
-	var _ = lodash;
+  var priorities = {
+    debug : 500,
+    log   : 400,
+    info  : 300,
+    warn  : 200,
+    error : 100
+  };
 
-	var priorities = {
-		debug : 500,
-		log   : 400,
-		info  : 300,
-		warn  : 200,
-		error : 100
-	};
+  var LEFT_BRACKET = '[';
+  var RIGHT_BRACKET = '] '; //There's a space at the end.
 
-	var LEFT_BRACKET = '[';
-	var RIGHT_BRACKET = '] '; //There's a space at the end.
-	
-	var state = {};
+  var state = {
+    enabled : true,
+    stringify : true,
+    pretty: false,
+    stacktrace : false,
+    ismsie : !!(document.all && document.querySelector && !document.addEventListener),
+    callback : '',
+    tag : {level: false, pkg: true},
+    pkg : '',
+    whitelist : [],
+    blacklist : [],
+    level : [],
+    metadata: {}
+  };
 
-	var __insideArray = function (needle, haystack) {
+  var deviceReady = false;
+  var queue = [];
 
-		return haystack.indexOf(needle) !== -1;
-	};
+  // use StoragePlugin so no upgraders are required in service releases
+  var CDV_PLUGIN_LOGGER = 'NetworkDetector';
+  var CDV_ACTION_LOG = 'log';
+  var CDV_ACTION_SET_NATIVE_OPTIONS = 'setNativeOptions';
+  var CDV_ACTION_SEND = 'send';
 
-	var __setState = function (options) {
+  // we want to pass log messages to cordova, which may not be ready,
+  // so we listen for deviceready event, and queue until event occurs
+  var __onDeviceReady = function() {
+    if (deviceReady) {
+      return;
+    }
 
-		state = {
-			enabled : typeof options.enabled === 'boolean' ? options.enabled : true,
-			stringify : typeof options.stringify === 'boolean' ? options.stringify : true,
-			android : typeof options.android === 'boolean' ? options.android : (WL.StaticAppProps.ENVIRONMENT === WL.Environment.ANDROID),
-			pretty: typeof options.pretty === 'boolean' ? options.pretty : false,
-			stacktrace : typeof options.stacktrace === 'boolean' ? options.stacktrace : false,
-			ismsie : typeof options.ismsie === 'boolean' ? options.ismsie : !!(document.all && document.querySelector && !document.addEventListener),
-			callback : options.callback || '',
-			tag : $.extend({level: false, pkg: true}, options.tag || {}),
-			pkg : options.pkg || '',
-			whitelist : options.whitelist || [],
-			blacklist : options.blacklist || [],
-			level : options.level || []
-		};
-	};
+    var noop = function () {};
+    deviceReady = true;
 
-	var __stringify = function (input) {
+    for (var i = 0; i < queue.length; i++) {
+      var current = queue[i];
+      if ($.isArray(current)) {
+        cordova.exec(null, null, CDV_PLUGIN_LOGGER, CDV_ACTION_LOG, current);
+      } else if (typeof current === 'object') {
 
-		if (input instanceof Error) {
+        current.dfd = current.dfd || {};
+        cordova.exec(current.dfd.resolve || noop,
+            current.dfd.reject || noop,
+            CDV_PLUGIN_LOGGER, CDV_ACTION_SET_NATIVE_OPTIONS, [current]);
+      }
+    }
 
-			return (state.stacktrace) ? printStackTrace({e: input}).join('\n') : input.toString();
-		}
+    queue = null;
+  };
 
-		else if (typeof input === 'object' && JSON && JSON.stringify) {
+  var __getLogArgArray= function (args, priority, pkg) {
 
-			try {
-				return (state.pretty) ? JSON.stringify(input, null, ' ') : JSON.stringify(input);
-			}
-			catch (e) {
-				return 'Stringify Failed: ' + e;
-			}
+    var msgStr = __stringifyArguments(args);
+    var meta = $.extend(true, {'$src': 'js', '$arguments': args}, state.metadata); //clone obj
+    state.metadata = {}; //clear metadata obj
 
-		} else {
-			return (typeof input === 'undefined') ? 'undefined' : input.toString();
-		}
-	};
+    for (var i = 0; i < args.length; i++) {
 
-	var __stringifyArguments = function (args) {
+      if (args[i] instanceof Error) {
+        args[i] = {'$name': args[i].toString(), '$stacktrace': printStackTrace({e: args[i]})};
+      }
+    }
 
-		var len = args.length,
-			i = 0,
-			res = [];
+    return [priority.toUpperCase(), pkg, msgStr, meta, (new Date()).getTime()];
+  };
 
-		for (; i < len ; i++) {
-			res.push(__stringify(args[i]));
-		}
+  var __checkNativeEnvironment = function () {
+    var env = WL.StaticAppProps.ENVIRONMENT;
 
-		return res.join(' ');
-	};
+    return (env === 'android' ||
+        env === 'iphone' ||
+        env === 'ipad');
+  };
+  
+  if (__checkNativeEnvironment()) {
+    var interval = setInterval(function() {
+      if (!deviceReady && typeof window.cordova === 'object' 
+        && typeof window.cordova.exec === 'function') {
+        setTimeout(function(){
+          __onDeviceReady();
+        },0);
+        clearInterval(interval);
+      }
+    }, 500);
+  }
 
-	//currentPriority is the priority linked to the current log msg
-	//stateLevel can be an Array (whitelist of levels), a string (e.g. 'warn') or a number (200)
-	var __checkLevel = function (currentPriority, stateLevel) {
+  var __insideArray = function (needle, haystack) {
 
-		if ($.isArray(stateLevel)) {
+    return haystack.indexOf(needle) !== -1;
+  };
 
-			return	(//Check if current is whitelisted (state)
-					stateLevel.length > 0 &&
-					!__insideArray(currentPriority, stateLevel)
-				);
+  var __getKeys = function (obj) {
+    var arr = [];
 
-		} else if (typeof stateLevel === 'string') {
+    for (var key in obj) {
+      if(obj.hasOwnProperty(key)){
+        arr.push(key);
+      }
+    }
+    return arr;
+  };
 
-			stateLevel = stateLevel.toLowerCase();//Handle WARN, wArN, etc instead of just warn
+  var __setState = function (options) {
 
-			return	(//Get numeric value and compare current with state
-					typeof (priorities[currentPriority]) === 'number' &&
-					typeof (priorities[stateLevel]) === 'number' &&
-					(priorities[currentPriority]  > priorities[stateLevel])
-				);
+    state = {
+        enabled : typeof options.enabled === 'boolean' ? options.enabled : true,
+        stringify : typeof options.stringify === 'boolean' ? options.stringify : true,
+        pretty: typeof options.pretty === 'boolean' ? options.pretty : false,
+        stacktrace : typeof options.stacktrace === 'boolean' ? options.stacktrace : false,
+        ismsie : typeof options.ismsie === 'boolean' ? options.ismsie : !!(document.all && document.querySelector && !document.addEventListener),
+        callback : options.callback || '',
+        tag : $.extend({level: false, pkg: true}, options.tag || {}),
+        pkg : options.pkg || '',
+        whitelist : options.whitelist || [],
+        blacklist : options.blacklist || [],
+        level : options.level || [],
+        metadata: options.metadata || {}
+      };
+  };
 
-		} else if (typeof stateLevel === 'number') {
+  var __stringify = function (input) {
 
-			return (//Compare current with state
-					typeof (priorities[currentPriority]) === 'number' &&
-					(priorities[currentPriority]  > stateLevel)
-				);
-		}
+    if (input instanceof Error) {
 
-		return true; //Bail out, level is some unkown type
-	};
+      return (state.stacktrace) ? printStackTrace({e: input}).join('\n') : input.toString();
+    }
 
-	var __checkLists = function (pkg, whitelistArr, blacklistArr) {
+    else if (typeof input === 'object' && JSON && JSON.stringify) {
 
-		return (//Package inside Whitelist
-				($.isArray(whitelistArr) && whitelistArr.length > 0 && !__insideArray(pkg, whitelistArr)) ||
+      try {
+        return (state.pretty) ? JSON.stringify(input, null, ' ') : JSON.stringify(input);
+      }
+      catch (e) {
+        return 'Stringify Failed: ' + e;
+      }
 
-				//Package inside Blacklist
-				($.isArray(blacklistArr) && blacklistArr.length > 0 && __insideArray(pkg, blacklistArr))
-			);
-	};
+    } else {
+      return (typeof input === 'undefined') ? 'undefined' : input.toString();
+    }
+  };
 
-	var __log = function (args, priority) {
+  var __stringifyArguments = function (args) {
 
-		var str = '',
-			pkg = state.pkg;
+    var len = args.length,
+    i = 0,
+    res = [];
 
-		state.pkg = ''; //clear pkg from state obj
+    for (; i < len ; i++) {
+      res.push(__stringify(args[i]));
+    }
 
-		if (!state.enabled ||
-			__checkLists(pkg, state.whitelist, state.blacklist) ||
-			__checkLevel(priority, state.level)) {
+    return res.join(' ');
+  };
 
-			return;
-		}
+  //currentPriority is the priority linked to the current log msg
+  //stateLevel can be an Array (whitelist of levels), a string (e.g. 'warn') or a number (200)
+  var __checkLevel = function (currentPriority, stateLevel) {
 
-		if (state.stringify) {
-			str = __stringifyArguments(args);
-		}
+    if ($.isArray(stateLevel)) {
 
-		//Apply Package Tag		
-		if (state.tag.pkg && typeof pkg === 'string' && pkg.length > 0) {
-			str = LEFT_BRACKET + pkg + RIGHT_BRACKET + str;
-		}
+      return  (//Check if current is whitelisted (state)
+          stateLevel.length > 0 &&
+          !__insideArray(currentPriority, stateLevel)
+      );
 
-		//Apply Level Tag
-		if (state.tag.level) {
-			str = LEFT_BRACKET + priority.toUpperCase() + RIGHT_BRACKET + str;
-		}
+    } else if (typeof stateLevel === 'string') {
 
-		if (!state.stringify && str.length > 0) {
-			args.unshift(str);
-		}
+      stateLevel = stateLevel.toLowerCase();//Handle WARN, wArN, etc instead of just warn
 
-		//Special case for Android
-		if (state.android && typeof cordova === 'object' && cordova.exec) {
-		
-			str = (!state.stringify) ? __stringifyArguments(args) : str;
-			
-			var failureCallback = function () {
-				if (typeof console === 'object' && console.log) {
-					console.log(str);
-				}
-			};
+      return  (//Get numeric value and compare current with state
+          typeof (priorities[currentPriority]) === 'number' &&
+          typeof (priorities[stateLevel]) === 'number' &&
+          (priorities[currentPriority]  > priorities[stateLevel])
+      );
 
-			cordova.exec(null, failureCallback, "Logger", priority.toUpperCase(), [str]);	
-		}
-		
-		//Log to the console
-		else if (typeof console === 'object') {
+    } else if (typeof stateLevel === 'number') {
 
-			if (typeof console[priority] === 'function') {
-				(state.stringify) ? console[priority](str) : console[priority].apply(console, args);
+      return (//Compare current with state
+          typeof (priorities[currentPriority]) === 'number' &&
+          (priorities[currentPriority]  > stateLevel)
+      );
+    }
 
-			} else if (typeof console.log === 'function') {
-				(state.stringify) ? console.log(str) : console.log.apply(console, args);
-			
-			} else if (state.ismsie && typeof console.log === 'object') {
-                (state.stringify) ? console.log(str) : console.log.apply(console, args);
-            }
+    return true; //Bail out, level is some unknown type
+  };
 
-		} else {
-			
-			//Special case for Adobe Air apps in debug mode
-			if (typeof air === 'object' && air.Introspector && air.Introspector.Console) {
+  var __checkLists = function (pkg, whitelistArr, blacklistArr) {
 
-                if (typeof air.Introspector.Console[priority] === 'function') {
-                    (state.stringify) ? air.Introspector.Console[priority](str) : air.Introspector.Console[priority].apply(air, args);
-                
-                } else if (typeof air.Introspector.Console.log === 'function') {
-                    (state.stringify) ? air.Introspector.Console.log(str) : air.Introspector.Console.log.apply(air, args);
-                }
-			}
+    return (//Package inside Whitelist
+        ($.isArray(whitelistArr) && whitelistArr.length > 0 && !__insideArray(pkg, whitelistArr)) ||
 
-			//Special case for BlackBerry
-			else if (typeof worklight === 'object' && worklight.utils && typeof worklight.utils.log === 'function') {
-				
-				str = (!state.stringify) ? __stringifyArguments(args) : str;
+        //Package inside Blacklist
+        ($.isArray(blacklistArr) && blacklistArr.length > 0 && __insideArray(pkg, blacklistArr))
+    );
+  };
 
-				worklight.utils.log(str, priority);
-			}
-		}
+  var __log = function (args, priority) {
 
-		//The default value of state.callback is an empty string (not a function)
-		//and to prevent infinite loops when calling WL.Analytics.log we exclude the wl.analytics pkg
-		if (typeof state.callback === 'function' && pkg !== 'wl.analytics') {
-			if (!state.stringify) {
-				str = args;
-			}
-			state.callback(str, priority, pkg);
-		}
+    var str = '',
+    pkg = state.pkg;
 
-	};
+    state.pkg = ''; //clear pkg from state obj
 
-	var LogInstance = function (ops) {
-		this.options = ops || {};
-	};
+    if (!state.enabled ||
+        __checkLists(pkg, state.whitelist, state.blacklist) ||
+        __checkLevel(priority, state.level)) {
 
-	//Add .debug(), .log(), etc. to LogInstances 
-	_.forEach(_.keys(priorities), function (priority) {
-		LogInstance.prototype[priority] = function () {
-			WL.Logger.ctx(this.options)[priority].apply(this, arguments);
-		};
-	});
+      return;
+    }
 
-	var _create = function (options) {
-		return new LogInstance(options);
-	};
+    if (state.stringify) {
+      str = __stringifyArguments(args);
+    }
 
-	var _on = function (options) {
-		__setState($.extend({enabled: true}, options || {}));
-		return this;
-	};
+    //Apply Package Tag
+    if (state.tag.pkg && typeof pkg === 'string' && pkg.length > 0) {
+      str = LEFT_BRACKET + pkg + RIGHT_BRACKET + str;
+    }
 
-	var _off = function () {
-		__setState({enabled: false});
-		return this;
-	};
+    //Apply Level Tag
+    if (state.tag.level) {
+      str = LEFT_BRACKET + priority.toUpperCase() + RIGHT_BRACKET + str;
+    }
 
-	var _status = function () {
-		return state;
-	};
+    if (!state.stringify && str.length > 0) {
+      args.unshift(str);
+    }
 
-	var _ctx = function (options) {
-		$.extend(state, options || {});
-		return this;
-	};
+    if (!__checkNativeEnvironment()) {
 
-	var PUBLIC_API = {
-		create : _create,
-		on : _on,
-		off : _off,
-		status : _status,
-		ctx : _ctx
-	};
+      //Log to the console
+      if (typeof console === 'object') {
 
-	//Add .debug(), .log(), etc. to WL.Logger's public API 
-	_.forEach(_.keys(priorities), function (priority) {
-		PUBLIC_API[priority] = function () {
-			__log([].slice.call(arguments), priority);
-		};
-	});
+        if (typeof console[priority] === 'function') {
+          (state.stringify) ? console[priority](str) : console[priority].apply(console, args);
 
-	return PUBLIC_API;
+        } else if (typeof console.log === 'function') {
+          (state.stringify) ? console.log(str) : console.log.apply(console, args);
 
-}(WLJQ, WL_)); //WL.Logger
+        } else if (state.ismsie && typeof console.log === 'object') {
+          (state.stringify) ? console.log(str) : console.log.apply(console, args);
+        }
 
+      } else {
 
+        //Special case for Adobe Air apps in debug mode
+        if (typeof air === 'object' && air.Introspector && air.Introspector.Console) {
+
+          if (typeof air.Introspector.Console[priority] === 'function') {
+            (state.stringify) ? air.Introspector.Console[priority](str) : air.Introspector.Console[priority].apply(air, args);
+
+          } else if (typeof air.Introspector.Console.log === 'function') {
+            (state.stringify) ? air.Introspector.Console.log(str) : air.Introspector.Console.log.apply(air, args);
+          }
+        }
+
+        //Special case for BlackBerry
+        else if (typeof worklight === 'object' && worklight.utils && typeof worklight.utils.log === 'function') {
+
+          str = (!state.stringify) ? __stringifyArguments(args) : str;
+
+          worklight.utils.log(str, priority);
+        }
+      }
+
+    } else {
+
+      if (!deviceReady) {
+
+        try {
+          queue.push(__getLogArgArray(args, priority, pkg));
+        } catch (e) {
+          console.log('[wl.logger] ' + e.toString());
+        }
+
+      } else if (typeof cordova === 'object' && cordova.exec) {
+
+        cordova.exec(null, null, CDV_PLUGIN_LOGGER, CDV_ACTION_LOG, __getLogArgArray(args, priority, pkg));
+      }
+
+    }
+
+    //The default value of state.callback is an empty string (not a function)
+    //and to prevent infinite loops when calling WL.Analytics.log we exclude the wl.analytics pkg
+    if (typeof state.callback === 'function' && pkg !== 'wl.analytics') {
+      if (!state.stringify) {
+        str = args;
+      }
+      state.callback(str, priority, pkg);
+    }
+
+  };
+
+  var LogInstance = function (ops) {
+    this.options = ops || {};
+  };
+
+  //Add .debug(), .log(), etc. to LogInstances
+  $.each(__getKeys(priorities), function (idx, priority) {
+    LogInstance.prototype[priority] = function () {
+      WL.Logger.ctx(this.options)[priority].apply(this, arguments);
+    };
+  });
+
+  var _create = function (options) {
+    return new LogInstance(options);
+  };
+
+  var _on = function (options) {
+    __setState($.extend({enabled: true}, options || {}));
+    return this;
+  };
+
+  var _off = function () {
+    __setState({enabled: false});
+    return this;
+  };
+
+  var _status = function () {
+    return state;
+  };
+
+  var _ctx = function (options) {
+    $.extend(state, options || {});
+    return this;
+  };
+
+  var _send = function () {
+
+    var dfd = $.Deferred();
+
+    setTimeout(function () {
+      cordova.exec(dfd.resolve, dfd.reject, CDV_PLUGIN_LOGGER, CDV_ACTION_SEND, []);
+    }, 0);
+
+    return dfd.promise();
+  };
+
+  var _metadata = function (obj) {
+
+    if (typeof obj === 'object') {
+      state.metadata = obj;
+    }
+
+    return this;
+  };
+
+  var _setNativeOptions = function (options) {
+
+    var dfd = $.Deferred();
+
+    if (typeof options !== 'object') {
+
+      setTimeout(function () {
+        dfd.reject({src: 'setNativeOptions', msg: 'You must pass an object to WL.Logger.setNativeOptions'});
+      }, 1);
+
+      return dfd.promise();
+    }
+
+    if (!__checkNativeEnvironment()) {
+
+      setTimeout(function () {
+        dfd.reject({src: 'setNativeOptions', msg: 'WL.Logger.setNativeOptions only works on Android and iOS environments, current environment is: '+
+          __checkNativeEnvironment()});
+      }, 1);
+
+      return dfd.promise();
+    }
+
+    var ops = {};
+
+    //Check if maxFileSize is an integer (e.g. 1, not 1.1)
+    if (Math.floor(options.maxFileSize) === options.maxFileSize && $.isNumeric(options.maxFileSize)) {
+      ops.maxFileSize = options.maxFileSize;
+    }
+
+    //Level is 'debug', 'log', 'info', 'warn' or 'error'
+    //Why Up/Low case? __getKeys will return lower case strings and native expects upper cased strings.
+    if (typeof options.level === 'string' && __insideArray(options.level.toLowerCase(), __getKeys(priorities))) {
+      ops.level = options.level.toUpperCase();
+    }
+
+    if (typeof options.capture === 'boolean') {
+      ops.capture = options.capture;
+    }
+
+    if (!deviceReady) {
+      //Queue the operation until the bridge to native is active
+      ops.dfd = dfd;
+      try {
+        queue.push(ops);
+      } catch (e) {
+        console.log('[wl.logger] ' + e.toString());
+      }
+    } else {
+      cordova.exec(dfd.resolve, dfd.reject, CDV_PLUGIN_LOGGER, CDV_ACTION_SET_NATIVE_OPTIONS, [ops]);
+    }
+
+    return dfd.promise();
+  };
+
+  var PUBLIC_API = {
+    create : _create,
+    on : _on,
+    off : _off,
+    status : _status,
+    ctx : _ctx,
+    send: _send,
+    metadata: _metadata,
+    setNativeOptions : _setNativeOptions,
+    // for testing:
+    __onDeviceReady : __onDeviceReady,
+    __deviceReady : deviceReady
+  };
+
+  //Add .debug(), .log(), etc. to WL.Logger's public API
+  $.each(__getKeys(priorities), function (idx, priority) {
+    PUBLIC_API[priority] = function () {
+      __log([].slice.call(arguments), priority);
+    };
+  });
+
+  return PUBLIC_API;
+
+}(WLJQ)); //WL.Logger
 
 /**
  * ================================================================= 
@@ -5101,6 +5324,10 @@ __WLDeviceAuth = function() {
     this.__isCertificateExists = function(provisioningEntitiy, successCallback, failureCallback) {
         cordova.exec(successCallback, failureCallback, "DeviceAuth", "isCertificateExists", [ provisioningEntitiy ]);
     },
+    
+    this.__clearDeviceCertificate = function(provisioningEntitiy, successCallback, failureCallback) {
+        cordova.exec(successCallback, failureCallback, "DeviceAuth", "clearDeviceCertCredentials", [ provisioningEntitiy ]);
+    },
 
     /**
      * Sign the deviceAuth payload
@@ -5341,6 +5568,7 @@ __WLClient = function() {
     var __locale;
     var __pattern;
     var __androidScreenSize = {};
+	var __androidSDKVersion;
     
     var initOptions = {
         onSuccess : function() {
@@ -5360,6 +5588,7 @@ __WLClient = function() {
         validateArguments : true,
         updateSilently : false,
         showCloseOnRemoteDisableDenial : true,
+        showCloseOnDirectUpdateFailure : true,
         showIOS7StatusBar : true
     // authenticator : ...
     // messages : ...
@@ -5730,6 +5959,14 @@ __WLClient = function() {
              busyCounter++;
         }
     };
+
+    this.isShowCloseButtonOnDirectUpdateFailure = function() {
+    	if (initOptions.showCloseOnDirectUpdateFailure == true) {
+    		return true;
+    	} else {
+    		return false;
+    	}
+    }
     
     this.__setFriendlyName = function(friendlyName, options){
 		WL.Validators.validateArguments([ 'string', WL.Validators.validateObjectOrNull ], arguments, 'WL.Client.__setFriendlyName');
@@ -5756,6 +5993,11 @@ __WLClient = function() {
 	        onFailure : options.onFailure
 	    });
     };
+    
+	
+    this.__getAndroidSDKVersion = function() {
+		return __androidSDKVersion;
+	}    
     
     this.__getFriendlyName = function(options){
 
@@ -5916,6 +6158,7 @@ __WLClient = function() {
     }
 
     function onEnvInit(options) {
+    	WL.Logger.ctx({pkg: 'wl.client'}).info("WL.Client onEnvInit ENTERING");
         if (contentPort === null || typeof contentPort == "undefined") {
             throw new Error("Missing element with 'content' id in the html.");
         }
@@ -5939,6 +6182,10 @@ __WLClient = function() {
 
         if (initOptions.enableLogger || (typeof initOptions.logger === 'object' && initOptions.logger.enabled)) {
             WL.Logger.on(initOptions.logger || {});
+            
+            if ((typeof initOptions.logger === 'object') && (typeof initOptions.logger.nativeOptions === 'object')) {
+              WL.Logger.setNativeOptions(initOptions.logger.nativeOptions);
+            }
         }
         
         if (typeof initOptions.analytics === 'object' && initOptions.analytics.enabled) {
@@ -6054,6 +6301,7 @@ __WLClient = function() {
 		</table>
      */
     this.init = function(options) {
+    	WL.Logger.ctx({pkg: 'wl.client'}).info("WL.Client.init ENTERING");
         WL.Validators.enableValidation();
         WL.Validators.validateOptions({
             onSuccess : 'function',
@@ -6083,6 +6331,7 @@ __WLClient = function() {
             validateArguments : 'boolean',
             connectOnStartup : 'boolean',
             showCloseOnRemoteDisableDenial : 'boolean',
+            showCloseOnDirectUpdateFailure : 'boolean',
             showIOS7StatusBar : 'boolean'
         }, options, "WL.Client.init");
 
@@ -6295,8 +6544,24 @@ __WLClient = function() {
 
 
             var cordovaInitCallback = function(returnedData) {
-        		navigator.globalization.getLocaleName(function(locale){
+            	navigator.globalization.getLocaleName(function(locale) {
         			__locale = locale.value;
+					if ((WL.Client.getEnvironment() == WL.Env.IPHONE) || (WL.Client.getEnvironment() == WL.Env.IPAD)) {
+						//TODO: move this outside when cordova getPreferredLanguage() is fixed
+						navigator.globalization.getPreferredLanguage(function(language) {
+							var __lang = language.value;
+							if(typeof __lang !== 'undefined' ) {
+								if(__lang.length > 2) {
+									__locale = __lang;
+								} else {
+									__locale = __lang + __locale.substr(2);
+								}
+							}
+							WL.Utils.setLocalization();
+						}, function(){});
+					} else {
+						WL.Utils.setLocalization();
+					}
             	}, function(){});
         		
         		navigator.globalization.getNumberPattern(function (pattern){
@@ -6338,6 +6603,12 @@ __WLClient = function() {
                     	
                     	WL.StaticAppProps.FREE_SPACE = returnedData.freeSpace;
                     }
+					
+                    // set android SDK version                
+                    cordova.exec(function(value){
+            			__androidSDKVersion = value;
+            		}, null, 'Utils', 'getSDKVersion', [])
+            		
                     // In development mode, the application has a settings
                     // widget in which the user may alter
                     // the application's root url
@@ -6454,6 +6725,7 @@ __WLClient = function() {
         }
 
         function onConnectSuccess(transport) {
+        	WL.Logger.ctx({pkg: 'wl.client'}).info("WL.Client.connect onConnectSuccess ENTERING");
         	
             if (transport == null || transport.responseJSON == null) {
             	showDialog(WL.ClientMessages.error, WL.ClientMessages.responseNotRecognized, true, true, {}, 
@@ -6587,6 +6859,11 @@ __WLClient = function() {
                 var requiredSizeForUpdateMB = ((updatesJSON.updateSize + updatesJSON.updateUnpackedSize) / 1048576).toFixed(2);
                 WL.Client.__hideBusy();
                 WL.Utils.addBlackDiv();
+                
+                // fire an event that direct update is about to begin (or error dialog "not enough space is shown"), 
+                // so a developer will be able to take appropriate actions (like hide custom busy indicator)
+                WL.Utils.dispatchWLEvent(WL.Events.BEFORE_DIRECT_UPDATE);
+                
                 // first check if there is enough space on the device to
                 // download the zip file + extract it
                 if (Number(requiredSizeForUpdateMB) > Number(freeSpaceOnDeviceMB)) {
@@ -6594,14 +6871,21 @@ __WLClient = function() {
                             WL.ClientMessages.directUpdateErrorMessageNotEnoughStorage, requiredSizeForUpdateMB,
                             freeSpaceOnDeviceMB);
                     WL.Logger.debug(notEnoughSpaceMsg);
-                    WL.SimpleDialog.show(WL.ClientMessages.directUpdateNotificationTitle, notEnoughSpaceMsg, [ {
-                        text : WL.ClientMessages.tryAgain,
+                    
+                    var buttons = [ {
+                    	text : WL.ClientMessages.tryAgain,
                         handler : sendInitRequest
-                    }, {
-                        text : WL.ClientMessages.close,
-                        handler : function() {
-                        }
-                    } ]);
+                    }];
+                	
+                	if (WL.Client.isShowCloseButtonOnDirectUpdateFailure()) {
+                		buttons.push({
+                	        text : WL.ClientMessages.close,
+                	        handler : function () {}
+                	    });
+                	}
+                    
+                    WL.SimpleDialog.show(WL.ClientMessages.directUpdateNotificationTitle, notEnoughSpaceMsg, buttons);
+    
                     if (transport) {
                         finishInitFlow(transport);
                     }
@@ -6617,6 +6901,7 @@ __WLClient = function() {
             }
             // internal function to be called directly or via callback
             function finishInitFlow(transport) {
+            	WLJSX.unbind(document, 'foreground');
                 WLJSX.bind(document, 'foreground', onForegroundCallback);
                 options.onSuccess(transport);
             }
@@ -6702,6 +6987,7 @@ __WLClient = function() {
         }
 
         function onInitFailure(transport) {
+        	WL.Logger.ctx({pkg: 'wl.client'}).info("WL.Client.connect onInitFailure ENTERING");
             showWidgetContent();
             onFailureResetSettings(transport);
         }
@@ -6766,9 +7052,11 @@ __WLClient = function() {
         function onLogoutSuccess(transport) {
             if (typeof userInfo[realm] === "undefined") {
                 WL.Logger.error('onLogoutSuccess: realm: ' + realm + ' is undefined');
-                return;
+                
             }
-            (userInfo[realm])[WL.UserInfo.IS_USER_AUTHENTICATED] = false;
+            else {
+            	(userInfo[realm])[WL.UserInfo.IS_USER_AUTHENTICATED] = false;
+            }
             if (getAppProp(WL.AppProp.LOGIN_REALM) === realm && heartBeatPeriodicalExecuter) {
                 // stop sending heart beats
                 heartBeatPeriodicalExecuter.stop();
@@ -7424,7 +7712,7 @@ __WLClient = function() {
     	
     	var envsSupporting403 = [WL.Env.WINDOWS_PHONE_8, 
     	                         WL.Env.BLACKBERRY, WL.Env.BLACKBERRY10, 
-    	                         WL.Env.MOBILE_WEB];
+    	                         WL.Env.MOBILE_WEB, WL.Env.DESKTOPBROWSER];
     	
         if (-1 !== WLJQ.inArray(env, envsSupporting403) || 
         		(env === WL.Env.PREVIEW && -1 !== WLJQ.inArray(previewEnv, envsSupporting403))) {
@@ -7483,6 +7771,7 @@ __WLClient = function() {
             for ( var realm in wlFailure) {
                 if (Object.prototype.hasOwnProperty.call(wlFailure, realm)) {
                     handler = WL.Client.__chMap[realm];
+                    isConnecting = false;
                     if (handler != null && typeof handler !== 'undefined') {
                     	handler.handleFailure(wlFailure[realm], wlRequest, response);
                         handler.clearWaitingList();
@@ -7776,7 +8065,7 @@ __WLClient = function() {
     this.createProvisioningChallengeHandler = function(realmName) {
         // Creates SUPER challenge processor
         var challengeHandler = WL.Client.createDeviceAuthChallengeHandler(realmName);
-        
+        var provisioningEntity;
       
 		/**
 		 * @deprecated use createCustomCsr(challenge) instead
@@ -7852,6 +8141,8 @@ __WLClient = function() {
 			WL.DeviceAuth.init(function() {
 				initCallback();
 			});
+			
+			provisioningEntity = challenge.ID.entity;
 
 			function initCallback(result) {
 				if (challengeHandler.isCertificateChallengeResponse(challenge)) {
@@ -7930,6 +8221,10 @@ __WLClient = function() {
 	        		},
 	        		deviceDataJSON, deviceProvisioning.provisioningEntity , deviceProvisioning.isProvisioningEnabled);
 	        };
+	        
+	        challengeHandler.clearDeviceProvisioningCertificate = function() {
+	        	WL.DeviceAuth.__clearDeviceCertificate(provisioningEntity);
+	        }
 	       
 	        challengeHandler.handleFailure = function(err, request, response){
 	        	if (err.reason == "bad token") {
@@ -7940,7 +8235,13 @@ __WLClient = function() {
 	        		else{
 	        			request.onFailure(response);
 	        		}
+	        	}        	
+	        	//delete certificate by provisioningEntity
+	        	else {
+	        		challengeHandler.clearDeviceProvisioningCertificate();
+	        		request.onFailure(response);
 	        	}
+	        	
 	        };
 	        
         // Returns it
@@ -8113,6 +8414,7 @@ __WLClient = function() {
     this.__handleOnRemoteDisableDenial = function(defaultonErrorRemoteDisableDenial, that, msg , downloadLink) {
     	
     	WL.Client.__hideBusy();
+    	isConnecting = false; 
     	
     	if (initOptions.onErrorRemoteDisableDenial) {
             initOptions.onErrorRemoteDisableDenial(msg, downloadLink);
@@ -8366,60 +8668,59 @@ wl_remoteDisableChallengeHandler.handleFailure = function(err) {
 */
 var myMathRandom=Math.random,myMathFloor=Math.floor,myMathCeil=Math.ceil,myStringFromCharCode=String.fromCharCode,myDecodeURIComponent=decodeURIComponent,myEncodeURIComponent=encodeURIComponent,myUnescape=unescape,myEscape=escape,api={open:"open",close:"close",changeCredentials:"changeCredentials",destroy:"destroy",read:"read",write:"write",remove:"remove",secureRandom:"secureRandom",random:"random",keygen:"keygen"};
 function a2h(a){var c="",b;for(b=0;b<a.length;b++)c+=(16>a[b]?"0":"")+a[b].toString(16);return c}function h2a(a){var c=[];a.replace(/(..)/g,function(a){c.push(parseInt(a,16))});return c}function s2a(a){var c=[],b;for(b=0;b<a.length;b++)c[b]=a.charCodeAt(b);return c}function enc_utf8(a){try{return myUnescape(myEncodeURIComponent(a))}catch(c){throw c;}}function dec_utf8(a){try{return myDecodeURIComponent(myEscape(a))}catch(c){throw c;}}
-function MD5(a){function c(a,d){var b,c,e,f,g;e=a&2147483648;f=d&2147483648;b=a&1073741824;c=d&1073741824;g=(a&1073741823)+(d&1073741823);return b&c?g^2147483648^e^f:b|c?g&1073741824?g^3221225472^e^f:g^1073741824^e^f:g^e^f}function b(a,d,b,e,g,f,h){a=c(a,c(c(d&b|~d&e,g),h));return c(a<<f|a>>>32-f,d)}function e(a,d,b,e,f,g,h){a=c(a,c(c(d&e|b&~e,f),h));return c(a<<g|a>>>32-g,d)}function f(a,d,b,e,g,f,h){a=c(a,c(c(d^b^e,g),h));return c(a<<f|a>>>32-f,d)}function l(a,d,b,e,f,g,h){a=c(a,c(c(b^(d|~e),f),
-h));return c(a<<g|a>>>32-g,d)}function k(a){var d,b,e=[];for(b=0;3>=b;b++)d=a>>>8*b&255,e=e.concat(d);return e}var d=[],m,o,p,q,g,i,h,j,d=function(a){var d,b=a.length;d=b+8;for(var e=16*((d-d%64)/64+1),c=[],g=0,f=0;f<b;)d=(f-f%4)/4,g=8*(f%4),c[d]|=a[f]<<g,f++;d=(f-f%4)/4;c[d]|=128<<8*(f%4);c[e-2]=b<<3;c[e-1]=b>>>29;return c}(a);g=1732584193;i=4023233417;h=2562383102;j=271733878;for(a=0;a<d.length;a+=16)m=g,o=i,p=h,q=j,g=b(g,i,h,j,d[a+0],7,3614090360),j=b(j,g,i,h,d[a+1],12,3905402710),h=b(h,j,g,i,
-d[a+2],17,606105819),i=b(i,h,j,g,d[a+3],22,3250441966),g=b(g,i,h,j,d[a+4],7,4118548399),j=b(j,g,i,h,d[a+5],12,1200080426),h=b(h,j,g,i,d[a+6],17,2821735955),i=b(i,h,j,g,d[a+7],22,4249261313),g=b(g,i,h,j,d[a+8],7,1770035416),j=b(j,g,i,h,d[a+9],12,2336552879),h=b(h,j,g,i,d[a+10],17,4294925233),i=b(i,h,j,g,d[a+11],22,2304563134),g=b(g,i,h,j,d[a+12],7,1804603682),j=b(j,g,i,h,d[a+13],12,4254626195),h=b(h,j,g,i,d[a+14],17,2792965006),i=b(i,h,j,g,d[a+15],22,1236535329),g=e(g,i,h,j,d[a+1],5,4129170786),j=
-e(j,g,i,h,d[a+6],9,3225465664),h=e(h,j,g,i,d[a+11],14,643717713),i=e(i,h,j,g,d[a+0],20,3921069994),g=e(g,i,h,j,d[a+5],5,3593408605),j=e(j,g,i,h,d[a+10],9,38016083),h=e(h,j,g,i,d[a+15],14,3634488961),i=e(i,h,j,g,d[a+4],20,3889429448),g=e(g,i,h,j,d[a+9],5,568446438),j=e(j,g,i,h,d[a+14],9,3275163606),h=e(h,j,g,i,d[a+3],14,4107603335),i=e(i,h,j,g,d[a+8],20,1163531501),g=e(g,i,h,j,d[a+13],5,2850285829),j=e(j,g,i,h,d[a+2],9,4243563512),h=e(h,j,g,i,d[a+7],14,1735328473),i=e(i,h,j,g,d[a+12],20,2368359562),
-g=f(g,i,h,j,d[a+5],4,4294588738),j=f(j,g,i,h,d[a+8],11,2272392833),h=f(h,j,g,i,d[a+11],16,1839030562),i=f(i,h,j,g,d[a+14],23,4259657740),g=f(g,i,h,j,d[a+1],4,2763975236),j=f(j,g,i,h,d[a+4],11,1272893353),h=f(h,j,g,i,d[a+7],16,4139469664),i=f(i,h,j,g,d[a+10],23,3200236656),g=f(g,i,h,j,d[a+13],4,681279174),j=f(j,g,i,h,d[a+0],11,3936430074),h=f(h,j,g,i,d[a+3],16,3572445317),i=f(i,h,j,g,d[a+6],23,76029189),g=f(g,i,h,j,d[a+9],4,3654602809),j=f(j,g,i,h,d[a+12],11,3873151461),h=f(h,j,g,i,d[a+15],16,530742520),
-i=f(i,h,j,g,d[a+2],23,3299628645),g=l(g,i,h,j,d[a+0],6,4096336452),j=l(j,g,i,h,d[a+7],10,1126891415),h=l(h,j,g,i,d[a+14],15,2878612391),i=l(i,h,j,g,d[a+5],21,4237533241),g=l(g,i,h,j,d[a+12],6,1700485571),j=l(j,g,i,h,d[a+3],10,2399980690),h=l(h,j,g,i,d[a+10],15,4293915773),i=l(i,h,j,g,d[a+1],21,2240044497),g=l(g,i,h,j,d[a+8],6,1873313359),j=l(j,g,i,h,d[a+15],10,4264355552),h=l(h,j,g,i,d[a+6],15,2734768916),i=l(i,h,j,g,d[a+13],21,1309151649),g=l(g,i,h,j,d[a+4],6,4149444226),j=l(j,g,i,h,d[a+11],10,3174756917),
-h=l(h,j,g,i,d[a+2],15,718787259),i=l(i,h,j,g,d[a+9],21,3951481745),g=c(g,m),i=c(i,o),h=c(h,p),j=c(j,q);return k(g).concat(k(i),k(h),k(j))}var hexcase=0,b64pad="",chrsz=8;function hex_sha1(a){return binb2hex(core_sha1(str2binb(a),a.length*chrsz))}function b64_sha1(a){return binb2b64(core_sha1(str2binb(a),a.length*chrsz))}function str_sha1(a){return binb2str(core_sha1(str2binb(a),a.length*chrsz))}function hex_hmac_sha1(a,c){return binb2hex(core_hmac_sha1(a,c))}
+function MD5(a){function c(a,d){var b,c,e,g,f;e=a&2147483648;g=d&2147483648;b=a&1073741824;c=d&1073741824;f=(a&1073741823)+(d&1073741823);return b&c?f^2147483648^e^g:b|c?f&1073741824?f^3221225472^e^g:f^1073741824^e^g:f^e^g}function b(a,d,b,e,g,f,h){a=c(a,c(c(d&b|~d&e,g),h));return c(a<<f|a>>>32-f,d)}function e(a,d,b,e,g,f,h){a=c(a,c(c(d&e|b&~e,g),h));return c(a<<f|a>>>32-f,d)}function g(a,d,b,e,f,g,h){a=c(a,c(c(d^b^e,f),h));return c(a<<g|a>>>32-g,d)}function l(a,d,b,e,g,f,h){a=c(a,c(c(b^(d|~e),g),
+h));return c(a<<f|a>>>32-f,d)}function k(a){var d,b,e=[];for(b=0;3>=b;b++)d=a>>>8*b&255,e=e.concat(d);return e}var d=[],m,o,p,q,f,i,h,j,d=function(a){var d,b=a.length;d=b+8;for(var e=16*((d-d%64)/64+1),c=[],f=0,g=0;g<b;)d=(g-g%4)/4,f=8*(g%4),c[d]|=a[g]<<f,g++;d=(g-g%4)/4;c[d]|=128<<8*(g%4);c[e-2]=b<<3;c[e-1]=b>>>29;return c}(a);f=1732584193;i=4023233417;h=2562383102;j=271733878;for(a=0;a<d.length;a+=16)m=f,o=i,p=h,q=j,f=b(f,i,h,j,d[a+0],7,3614090360),j=b(j,f,i,h,d[a+1],12,3905402710),h=b(h,j,f,i,
+d[a+2],17,606105819),i=b(i,h,j,f,d[a+3],22,3250441966),f=b(f,i,h,j,d[a+4],7,4118548399),j=b(j,f,i,h,d[a+5],12,1200080426),h=b(h,j,f,i,d[a+6],17,2821735955),i=b(i,h,j,f,d[a+7],22,4249261313),f=b(f,i,h,j,d[a+8],7,1770035416),j=b(j,f,i,h,d[a+9],12,2336552879),h=b(h,j,f,i,d[a+10],17,4294925233),i=b(i,h,j,f,d[a+11],22,2304563134),f=b(f,i,h,j,d[a+12],7,1804603682),j=b(j,f,i,h,d[a+13],12,4254626195),h=b(h,j,f,i,d[a+14],17,2792965006),i=b(i,h,j,f,d[a+15],22,1236535329),f=e(f,i,h,j,d[a+1],5,4129170786),j=
+e(j,f,i,h,d[a+6],9,3225465664),h=e(h,j,f,i,d[a+11],14,643717713),i=e(i,h,j,f,d[a+0],20,3921069994),f=e(f,i,h,j,d[a+5],5,3593408605),j=e(j,f,i,h,d[a+10],9,38016083),h=e(h,j,f,i,d[a+15],14,3634488961),i=e(i,h,j,f,d[a+4],20,3889429448),f=e(f,i,h,j,d[a+9],5,568446438),j=e(j,f,i,h,d[a+14],9,3275163606),h=e(h,j,f,i,d[a+3],14,4107603335),i=e(i,h,j,f,d[a+8],20,1163531501),f=e(f,i,h,j,d[a+13],5,2850285829),j=e(j,f,i,h,d[a+2],9,4243563512),h=e(h,j,f,i,d[a+7],14,1735328473),i=e(i,h,j,f,d[a+12],20,2368359562),
+f=g(f,i,h,j,d[a+5],4,4294588738),j=g(j,f,i,h,d[a+8],11,2272392833),h=g(h,j,f,i,d[a+11],16,1839030562),i=g(i,h,j,f,d[a+14],23,4259657740),f=g(f,i,h,j,d[a+1],4,2763975236),j=g(j,f,i,h,d[a+4],11,1272893353),h=g(h,j,f,i,d[a+7],16,4139469664),i=g(i,h,j,f,d[a+10],23,3200236656),f=g(f,i,h,j,d[a+13],4,681279174),j=g(j,f,i,h,d[a+0],11,3936430074),h=g(h,j,f,i,d[a+3],16,3572445317),i=g(i,h,j,f,d[a+6],23,76029189),f=g(f,i,h,j,d[a+9],4,3654602809),j=g(j,f,i,h,d[a+12],11,3873151461),h=g(h,j,f,i,d[a+15],16,530742520),
+i=g(i,h,j,f,d[a+2],23,3299628645),f=l(f,i,h,j,d[a+0],6,4096336452),j=l(j,f,i,h,d[a+7],10,1126891415),h=l(h,j,f,i,d[a+14],15,2878612391),i=l(i,h,j,f,d[a+5],21,4237533241),f=l(f,i,h,j,d[a+12],6,1700485571),j=l(j,f,i,h,d[a+3],10,2399980690),h=l(h,j,f,i,d[a+10],15,4293915773),i=l(i,h,j,f,d[a+1],21,2240044497),f=l(f,i,h,j,d[a+8],6,1873313359),j=l(j,f,i,h,d[a+15],10,4264355552),h=l(h,j,f,i,d[a+6],15,2734768916),i=l(i,h,j,f,d[a+13],21,1309151649),f=l(f,i,h,j,d[a+4],6,4149444226),j=l(j,f,i,h,d[a+11],10,3174756917),
+h=l(h,j,f,i,d[a+2],15,718787259),i=l(i,h,j,f,d[a+9],21,3951481745),f=c(f,m),i=c(i,o),h=c(h,p),j=c(j,q);return k(f).concat(k(i),k(h),k(j))}var hexcase=0,b64pad="",chrsz=8;function hex_sha1(a){return binb2hex(core_sha1(str2binb(a),a.length*chrsz))}function b64_sha1(a){return binb2b64(core_sha1(str2binb(a),a.length*chrsz))}function str_sha1(a){return binb2str(core_sha1(str2binb(a),a.length*chrsz))}function hex_hmac_sha1(a,c){return binb2hex(core_hmac_sha1(a,c))}
 function b64_hmac_sha1(a,c){return binb2b64(core_hmac_sha1(a,c))}function str_hmac_sha1(a,c){return binb2str(core_hmac_sha1(a,c))}
-function core_sha1(a,c){a[c>>5]|=128<<24-c%32;a[(c+64>>9<<4)+15]=c;for(var b=Array(80),e=1732584193,f=-271733879,l=-1732584194,k=271733878,d=-1009589776,m=0;m<a.length;m+=16){for(var o=e,p=f,q=l,g=k,i=d,h=0;80>h;h++){b[h]=16>h?a[m+h]:rol(b[h-3]^b[h-8]^b[h-14]^b[h-16],1);var j=safe_add(safe_add(rol(e,5),sha1_ft(h,f,l,k)),safe_add(safe_add(d,b[h]),sha1_kt(h))),d=k,k=l,l=rol(f,30),f=e,e=j}e=safe_add(e,o);f=safe_add(f,p);l=safe_add(l,q);k=safe_add(k,g);d=safe_add(d,i)}return[e,f,l,k,d]}
-function sha1_ft(a,c,b,e){return 20>a?c&b|~c&e:40>a?c^b^e:60>a?c&b|c&e|b&e:c^b^e}function sha1_kt(a){return 20>a?1518500249:40>a?1859775393:60>a?-1894007588:-899497514}function core_hmac_sha1(a,c){var b=str2binb(a);16<b.length&&(b=core_sha1(b,a.length*chrsz));for(var e=Array(16),f=Array(16),l=0;16>l;l++)e[l]=b[l]^909522486,f[l]=b[l]^1549556828;b=core_sha1(e.concat(str2binb(c)),512+c.length*chrsz);return core_sha1(f.concat(b),672)}
+function core_sha1(a,c){a[c>>5]|=128<<24-c%32;a[(c+64>>9<<4)+15]=c;for(var b=Array(80),e=1732584193,g=-271733879,l=-1732584194,k=271733878,d=-1009589776,m=0;m<a.length;m+=16){for(var o=e,p=g,q=l,f=k,i=d,h=0;80>h;h++){b[h]=16>h?a[m+h]:rol(b[h-3]^b[h-8]^b[h-14]^b[h-16],1);var j=safe_add(safe_add(rol(e,5),sha1_ft(h,g,l,k)),safe_add(safe_add(d,b[h]),sha1_kt(h))),d=k,k=l,l=rol(g,30),g=e,e=j}e=safe_add(e,o);g=safe_add(g,p);l=safe_add(l,q);k=safe_add(k,f);d=safe_add(d,i)}return[e,g,l,k,d]}
+function sha1_ft(a,c,b,e){return 20>a?c&b|~c&e:40>a?c^b^e:60>a?c&b|c&e|b&e:c^b^e}function sha1_kt(a){return 20>a?1518500249:40>a?1859775393:60>a?-1894007588:-899497514}function core_hmac_sha1(a,c){var b=str2binb(a);16<b.length&&(b=core_sha1(b,a.length*chrsz));for(var e=Array(16),g=Array(16),l=0;16>l;l++)e[l]=b[l]^909522486,g[l]=b[l]^1549556828;b=core_sha1(e.concat(str2binb(c)),512+c.length*chrsz);return core_sha1(g.concat(b),672)}
 function safe_add(a,c){var b=(a&65535)+(c&65535);return(a>>16)+(c>>16)+(b>>16)<<16|b&65535}function rol(a,c){return a<<c|a>>>32-c}function str2binb(a){for(var c=[],b=(1<<chrsz)-1,e=0;e<a.length*chrsz;e+=chrsz)c[e>>5]|=(a.charCodeAt(e/chrsz)&b)<<32-chrsz-e%32;return c}function binb2str(a){for(var c="",b=(1<<chrsz)-1,e=0;e<32*a.length;e+=chrsz)c+=myStringFromCharCode(a[e>>5]>>>32-chrsz-e%32&b);return c}
-function binb2hex(a){for(var c=hexcase?"0123456789ABCDEF":"0123456789abcdef",b="",e=0;e<4*a.length;e++)b+=c.charAt(a[e>>2]>>8*(3-e%4)+4&15)+c.charAt(a[e>>2]>>8*(3-e%4)&15);return b}function binb2b64(a){for(var c="",b=0;b<4*a.length;b+=3)for(var e=(a[b>>2]>>8*(3-b%4)&255)<<16|(a[b+1>>2]>>8*(3-(b+1)%4)&255)<<8|a[b+2>>2]>>8*(3-(b+2)%4)&255,f=0;4>f;f++)c=8*b+6*f>32*a.length?c+b64pad:c+"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".charAt(e>>6*(3-f)&63);return c}
+function binb2hex(a){for(var c=hexcase?"0123456789ABCDEF":"0123456789abcdef",b="",e=0;e<4*a.length;e++)b+=c.charAt(a[e>>2]>>8*(3-e%4)+4&15)+c.charAt(a[e>>2]>>8*(3-e%4)&15);return b}function binb2b64(a){for(var c="",b=0;b<4*a.length;b+=3)for(var e=(a[b>>2]>>8*(3-b%4)&255)<<16|(a[b+1>>2]>>8*(3-(b+1)%4)&255)<<8|a[b+2>>2]>>8*(3-(b+2)%4)&255,g=0;4>g;g++)c=8*b+6*g>32*a.length?c+b64pad:c+"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".charAt(e>>6*(3-g)&63);return c}
 function SHA256(a){function c(a,b){var c=(a&65535)+(b&65535);return(a>>16)+(b>>16)+(c>>16)<<16|c&65535}function b(a,b){return a>>>b|a<<32-b}a=function(a){for(var a=a.replace(/\r\n/g,"\n"),b="",c=0;c<a.length;c++){var k=a.charCodeAt(c);128>k?b+=myStringFromCharCode(k):(127<k&&2048>k?b+=myStringFromCharCode(k>>6|192):(b+=myStringFromCharCode(k>>12|224),b+=myStringFromCharCode(k>>6&63|128)),b+=myStringFromCharCode(k&63|128))}return b}(a);return function(a){for(var b="",c=0;c<4*a.length;c++)b+="0123456789abcdef".charAt(a[c>>
-2]>>8*(3-c%4)+4&15)+"0123456789abcdef".charAt(a[c>>2]>>8*(3-c%4)&15);return b}(function(a,f){var l=[1116352408,1899447441,3049323471,3921009573,961987163,1508970993,2453635748,2870763221,3624381080,310598401,607225278,1426881987,1925078388,2162078206,2614888103,3248222580,3835390401,4022224774,264347078,604807628,770255983,1249150122,1555081692,1996064986,2554220882,2821834349,2952996808,3210313671,3336571891,3584528711,113926993,338241895,666307205,773529912,1294757372,1396182291,1695183700,1986661051,
-2177026350,2456956037,2730485921,2820302411,3259730800,3345764771,3516065817,3600352804,4094571909,275423344,430227734,506948616,659060556,883997877,958139571,1322822218,1537002063,1747873779,1955562222,2024104815,2227730452,2361852424,2428436474,2756734187,3204031479,3329325298],k=[1779033703,3144134277,1013904242,2773480762,1359893119,2600822924,528734635,1541459225],d=Array(64),m,o,p,q,g,i,h,j,r,n,s,t;a[f>>5]|=128<<24-f%32;a[(f+64>>9<<4)+15]=f;for(r=0;r<a.length;r+=16){m=k[0];o=k[1];p=k[2];q=k[3];
-g=k[4];i=k[5];h=k[6];j=k[7];for(n=0;64>n;n++)d[n]=16>n?a[n+r]:c(c(c(b(d[n-2],17)^b(d[n-2],19)^d[n-2]>>>10,d[n-7]),b(d[n-15],7)^b(d[n-15],18)^d[n-15]>>>3),d[n-16]),s=c(c(c(c(j,b(g,6)^b(g,11)^b(g,25)),g&i^~g&h),l[n]),d[n]),t=c(b(m,2)^b(m,13)^b(m,22),m&o^m&p^o&p),j=h,h=i,i=g,g=c(q,s),q=p,p=o,o=m,m=c(s,t);k[0]=c(m,k[0]);k[1]=c(o,k[1]);k[2]=c(p,k[2]);k[3]=c(q,k[3]);k[4]=c(g,k[4]);k[5]=c(i,k[5]);k[6]=c(h,k[6]);k[7]=c(j,k[7])}return k}(function(a){for(var b=[],c=0;c<8*a.length;c+=8)b[c>>5]|=(a.charCodeAt(c/
+2]>>8*(3-c%4)+4&15)+"0123456789abcdef".charAt(a[c>>2]>>8*(3-c%4)&15);return b}(function(a,g){var l=[1116352408,1899447441,3049323471,3921009573,961987163,1508970993,2453635748,2870763221,3624381080,310598401,607225278,1426881987,1925078388,2162078206,2614888103,3248222580,3835390401,4022224774,264347078,604807628,770255983,1249150122,1555081692,1996064986,2554220882,2821834349,2952996808,3210313671,3336571891,3584528711,113926993,338241895,666307205,773529912,1294757372,1396182291,1695183700,1986661051,
+2177026350,2456956037,2730485921,2820302411,3259730800,3345764771,3516065817,3600352804,4094571909,275423344,430227734,506948616,659060556,883997877,958139571,1322822218,1537002063,1747873779,1955562222,2024104815,2227730452,2361852424,2428436474,2756734187,3204031479,3329325298],k=[1779033703,3144134277,1013904242,2773480762,1359893119,2600822924,528734635,1541459225],d=Array(64),m,o,p,q,f,i,h,j,r,n,s,t;a[g>>5]|=128<<24-g%32;a[(g+64>>9<<4)+15]=g;for(r=0;r<a.length;r+=16){m=k[0];o=k[1];p=k[2];q=k[3];
+f=k[4];i=k[5];h=k[6];j=k[7];for(n=0;64>n;n++)d[n]=16>n?a[n+r]:c(c(c(b(d[n-2],17)^b(d[n-2],19)^d[n-2]>>>10,d[n-7]),b(d[n-15],7)^b(d[n-15],18)^d[n-15]>>>3),d[n-16]),s=c(c(c(c(j,b(f,6)^b(f,11)^b(f,25)),f&i^~f&h),l[n]),d[n]),t=c(b(m,2)^b(m,13)^b(m,22),m&o^m&p^o&p),j=h,h=i,i=f,f=c(q,s),q=p,p=o,o=m,m=c(s,t);k[0]=c(m,k[0]);k[1]=c(o,k[1]);k[2]=c(p,k[2]);k[3]=c(q,k[3]);k[4]=c(f,k[4]);k[5]=c(i,k[5]);k[6]=c(h,k[6]);k[7]=c(j,k[7])}return k}(function(a){for(var b=[],c=0;c<8*a.length;c+=8)b[c>>5]|=(a.charCodeAt(c/
 8)&255)<<24-c%32;return b}(a),8*a.length))}var Base64={encode:function(a){a=sjcl.codec.utf8String.toBits(a);return sjcl.codec.base64.fromBits(a)},decode:function(a){a=sjcl.codec.base64.toBits(a);return sjcl.codec.utf8String.fromBits(a)}};
 function EncryptedCache(){this.STORAGE_PREFIX="__$WLEOC__";this.SALT_KEY="__$WLEOC_SALT";this.CIPHER_KEY="__$WLEOC_CIPHER";this.VERSION="__$WLEOC_VERSION";this.DPK_KEY_DERIVATION_ITERATIONS=this.CBK_KEY_DERIVATION_ITERATIONS=1E3;this.keyCreationContext=this.DPK=null;WL.Client.getEnvironment()===WL.Environment.ANDROID||WL.Client.getEnvironment()===WL.Environment.IPHONE||WL.Client.getEnvironment()===WL.Environment.IPAD?(this[api.keygen]=new NativePBKDF2,this.encryptor=new NativeEncryptor):(this[api.keygen]=
 new WebBasedPBKDF2,this.encryptor=new WebBasedEncryptor)}
 var OK=EncryptedCache.prototype.OK=0,ERROR_NO_EOC=EncryptedCache.prototype.ERROR_NO_EOC=1,ERROR_CREDENTIALS_MISMATCH=EncryptedCache.prototype.ERROR_CREDENTIALS_MISMATCH=2,ERROR_EOC_TO_BE_DELETED=EncryptedCache.prototype.ERROR_EOC_TO_BE_DELETED=3,ERROR_EOC_DELETED=EncryptedCache.prototype.ERROR_EOC_DELETED=4,ERROR_UNSAFE_CREDENTIALS=EncryptedCache.prototype.ERROR_UNSAFE_CREDENTIALS=5,ERROR_EOC_CLOSED=EncryptedCache.prototype.ERROR_EOC_CLOSED=6,ERROR_NO_SUCH_KEY=EncryptedCache.prototype.ERROR_NO_SUCH_KEY=
 7,ERROR_LOCAL_STORAGE_NOT_SUPPORTED=EncryptedCache.prototype.ERROR_LOCAL_STORAGE_NOT_SUPPORTED=8,ERROR_KEY_CREATION_IN_PROGRESS=EncryptedCache.prototype.ERROR_KEY_CREATION_IN_PROGRESS=9,ERROR_SECURE_RANDOM_GENERATOR_UNAVAILABLE=EncryptedCache.prototype.ERROR_SECURE_RANDOM_GENERATOR_UNAVAILABLE=10,ERROR_COULD_NOT_GENERATE_KEY=EncryptedCache.prototype.ERROR_COULD_NOT_GENERATE_KEY=11,ERROR_INVALID_PARAMETER=EncryptedCache.prototype.ERROR_INVALID_PARAMETER=12,ERROR_UNKNOWN=EncryptedCache.prototype.ERROR_UNKNOWN=
 13,ERROR_MIGRATION=EncryptedCache.prototype.ERROR_MIGRATION=14;EncryptedCache.prototype[api.close]=function(a,c){WL.Validators.validateArguments([WL.Validators.validateFunctionOrNull,WL.Validators.validateFunctionOrNull],arguments,"WL.EncryptedCache.close");if(this.keyCreationContext){if(c)return c(ERROR_KEY_CREATION_IN_PROGRESS);throw ERROR_KEY_CREATION_IN_PROGRESS;}this.DPK=null;a&&a(OK)};EncryptedCache.prototype[api.random]=function(){return myMathRandom()};
-EncryptedCache.prototype[api.secureRandom]=function(a){WL.Validators.validateArguments([WL.Validators.validateFunctionOrNull],arguments,"WL.EncryptedCache.close");var c;c=WL.EnvProfile.isEnabled(WL.EPField.WEB)&&WL.Client.getEnvironment()!=WL.Env.MOBILE_WEB?"/random":WL.StaticAppProps.APP_SERVICES_URL+"random";new WLJSX.Ajax.WLRequest(c,{onSuccess:function(b){a(b.responseText)},onFailure:function(){a(ERROR_SECURE_RANDOM_GENERATOR_UNAVAILABLE)},timeout:WL.AppProp.WLCLIENT_TIMEOUT_IN_MILLIS,method:"get",
-evalJSON:!1})};
-EncryptedCache.prototype[api.open]=function(a,c,b,e){try{WL.Validators.validateArguments(["string","boolean",WL.Validators.validateFunctionOrNull,WL.Validators.validateFunctionOrNull],arguments,"WL.EncryptedCache.open")}catch(f){console.log(f);if(e)return e(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}if(void 0===a||""===a){console.log("Error: credentials is undefined or empty.");if(e)return e(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}if(this.DPK){var l=null;this.close(function(){},
+EncryptedCache.prototype[api.secureRandom]=function(a,c){var a="function"!==typeof a?function(){}:a,b,e={};if("number"===typeof c&&parseFloat(c)==parseInt(c,10)&&!isNaN(c)&&0<c)e.bytes=c;b=WL.EnvProfile.isEnabled(WL.EPField.WEB)&&WL.Client.getEnvironment()!=WL.Env.MOBILE_WEB?WL.StaticAppProps.POSTFIX_APP_SERVICES_URL+"random":WL.StaticAppProps.APP_SERVICES_URL+"random";WLJQ.ajax({url:b,method:"get",data:e,timeout:WL.AppProp.WLCLIENT_TIMEOUT_IN_MILLIS}).done(function(b){a(b)}).fail(function(){a(ERROR_SECURE_RANDOM_GENERATOR_UNAVAILABLE)})};
+EncryptedCache.prototype[api.open]=function(a,c,b,e){try{WL.Validators.validateArguments(["string","boolean",WL.Validators.validateFunctionOrNull,WL.Validators.validateFunctionOrNull],arguments,"WL.EncryptedCache.open")}catch(g){console.log(g);if(e)return e(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}if(void 0===a||""===a){console.log("Error: credentials is undefined or empty.");if(e)return e(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}if(this.DPK){var l=null;this.close(function(){},
 function(a){l=a});if(null!==l)return e(l)}if(!localStorage){if(e)return e(ERROR_LOCAL_STORAGE_NOT_SUPPORTED);throw ERROR_LOCAL_STORAGE_NOT_SUPPORTED;}if(this.keyCreationContext){if(e)return e(ERROR_KEY_CREATION_IN_PROGRESS);throw ERROR_KEY_CREATION_IN_PROGRESS;}var k=localStorage.getItem(this.SALT_KEY);if(null===k){if(!c){if(e)return e(ERROR_NO_EOC);throw ERROR_NO_EOC;}this.keyCreationContext={credentials:a,salt:""+this[api.random](),onCompleteHandler:b,onErrorHandler:e};var d=this;this[api.secureRandom](function(a){if(a==
 ERROR_SECURE_RANDOM_GENERATOR_UNAVAILABLE){a=d.keyCreationContext.onErrorHandler;this.keyCreationContext=d.keyCreationContext=null;if(a)return a(ERROR_SECURE_RANDOM_GENERATOR_UNAVAILABLE);throw ERROR_SECURE_RANDOM_GENERATOR_UNAVAILABLE;}d[api.keygen].deriveKey(a,d.keyCreationContext.salt,d.DPK_KEY_DERIVATION_ITERATIONS,32,function(a){d.keyCreationContext.DPK=a;d[api.keygen].deriveKey(d.keyCreationContext.credentials,d.keyCreationContext.salt,d.CBK_KEY_DERIVATION_ITERATIONS,32,function(a){var b=[MD5(""+
 d[api.random]())];d.encryptor.rawEncrypt(d.keyCreationContext.DPK,a,b[0],function(a){localStorage.setItem(d.CIPHER_KEY,a);localStorage.setItem(d.SALT_KEY,d.keyCreationContext.salt);localStorage.setItem(d.VERSION,"1");a=d.keyCreationContext.onCompleteHandler;d.DPK=d.keyCreationContext.DPK;this.keyCreationContext=d.keyCreationContext=null;a&&a(OK)},function(a){console.log(a);a=d.keyCreationContext.onErrorHandler;this.keyCreationContext=d.keyCreationContext=null;if(a)a(ERROR_COULD_NOT_GENERATE_KEY);
 else throw ERROR_COULD_NOT_GENERATE_KEY;})},function(a){console.log(a);a=d.keyCreationContext.onErrorHandler;this.keyCreationContext=d.keyCreationContext=null;if(a)a(ERROR_COULD_NOT_GENERATE_KEY);else throw ERROR_COULD_NOT_GENERATE_KEY;})},function(a){console.log(a);a=d.keyCreationContext.onErrorHandler;this.keyCreationContext=d.keyCreationContext=null;if(a)a(ERROR_COULD_NOT_GENERATE_KEY);else throw ERROR_COULD_NOT_GENERATE_KEY;})})}else this.keyCreationContext={onCompleteHandler:b,onErrorHandler:e},
-d=this,this[api.keygen].deriveKey(a,k,d.CBK_KEY_DERIVATION_ITERATIONS,32,function(a){var b=d.keyCreationContext.onCompleteHandler,c=d.keyCreationContext.onErrorHandler;this.keyCreationContext=d.keyCreationContext=null;var e=localStorage.getItem(d.CIPHER_KEY);d.encryptor.rawDecrypt(e,a,function(e){d.DPK=e;var e=localStorage.getItem(d.VERSION),f=WL.Client.getEnvironment();("iphone"===f||"ipad"===f)&&("undefined"===typeof e||"string"!==typeof e)?reEncryptStorage(b,c,d,a):b&&b(OK)},function(a){console.log(a);
+d=this,this[api.keygen].deriveKey(a,k,d.CBK_KEY_DERIVATION_ITERATIONS,32,function(a){var b=d.keyCreationContext.onCompleteHandler,c=d.keyCreationContext.onErrorHandler;this.keyCreationContext=d.keyCreationContext=null;var e=localStorage.getItem(d.CIPHER_KEY);d.encryptor.rawDecrypt(e,a,function(e){d.DPK=e;var e=localStorage.getItem(d.VERSION),g=WL.Client.getEnvironment();("iphone"===g||"ipad"===g)&&("undefined"===typeof e||"string"!==typeof e)?reEncryptStorage(b,c,d,a):b&&b(OK)},function(a){console.log(a);
 if(c)c(ERROR_CREDENTIALS_MISMATCH);else throw ERROR_CREDENTIALS_MISMATCH;})},function(a){console.log(a);a=d.keyCreationContext.onErrorHandler;this.keyCreationContext=d.keyCreationContext=null;if(a)a(ERROR_COULD_NOT_GENERATE_KEY);else throw ERROR_COULD_NOT_GENERATE_KEY;})};
-function reEncryptStorage(a,c,b,e){function f(a){console.log(a);if(c)c(ERROR_MIGRATION);else throw ERROR_MIGRATION;}var l=[MD5(""+b[api.random]())];b.encryptor.rawEncrypt(b.DPK,e,l[0],function(c){localStorage.setItem(b.CIPHER_KEY,c);reEncryptKeys(a,f,b)},f)}
-function reEncryptKeys(a,c,b){function e(){0<l.length?(k=l.pop(),readUsingHashedKey(k,b,f,c)):(localStorage.setItem(b.VERSION,"1"),a&&a(OK))}function f(a){writeUsingHashedKey(k,a,b,e,c)}for(var l=[],k="",d=localStorage.length-1;0<=d;d--){var m=localStorage.key(d);0===m.indexOf(b.STORAGE_PREFIX)&&l.push(m)}e()}function readUsingHashedKey(a,c,b,e){a=localStorage.getItem(a);c.encryptor.rawDecrypt(a,c.DPK,b,e)}
-function writeUsingHashedKey(a,c,b,e,f){var l=b.STORAGE_PREFIX,k=a.replace(l,""),a=[MD5(k+b[api.random]())];b.encryptor.rawEncrypt(c,b.DPK,a[0],function(a){localStorage.setItem(l+k,a);e()},f)}
-EncryptedCache.prototype[api.destroy]=function(a,c){WL.Validators.validateArguments([WL.Validators.validateFunctionOrNull,WL.Validators.validateFunctionOrNull],arguments,"WL.EncryptedCache.destroy");var b=null;this.close(function(){},function(a){b=a});if(null!==b){if(c)return c(b);throw b;}localStorage.removeItem(this.SALT_KEY);localStorage.removeItem(this.CIPHER_KEY);for(var e=localStorage.length-1;0<=e;e--){var f=localStorage.key(e);0===f.indexOf(this.STORAGE_PREFIX)&&localStorage.removeItem(f)}a&&
+function reEncryptStorage(a,c,b,e){function g(a){console.log(a);if(c)c(ERROR_MIGRATION);else throw ERROR_MIGRATION;}var l=[MD5(""+b[api.random]())];b.encryptor.rawEncrypt(b.DPK,e,l[0],function(c){localStorage.setItem(b.CIPHER_KEY,c);reEncryptKeys(a,g,b)},g)}
+function reEncryptKeys(a,c,b){function e(){0<l.length?(k=l.pop(),readUsingHashedKey(k,b,g,c)):(localStorage.setItem(b.VERSION,"1"),a&&a(OK))}function g(a){writeUsingHashedKey(k,a,b,e,c)}for(var l=[],k="",d=localStorage.length-1;0<=d;d--){var m=localStorage.key(d);0===m.indexOf(b.STORAGE_PREFIX)&&l.push(m)}e()}function readUsingHashedKey(a,c,b,e){a=localStorage.getItem(a);c.encryptor.rawDecrypt(a,c.DPK,b,e)}
+function writeUsingHashedKey(a,c,b,e,g){var l=b.STORAGE_PREFIX,k=a.replace(l,""),a=[MD5(k+b[api.random]())];b.encryptor.rawEncrypt(c,b.DPK,a[0],function(a){localStorage.setItem(l+k,a);e()},g)}
+EncryptedCache.prototype[api.destroy]=function(a,c){WL.Validators.validateArguments([WL.Validators.validateFunctionOrNull,WL.Validators.validateFunctionOrNull],arguments,"WL.EncryptedCache.destroy");var b=null;this.close(function(){},function(a){b=a});if(null!==b){if(c)return c(b);throw b;}localStorage.removeItem(this.SALT_KEY);localStorage.removeItem(this.CIPHER_KEY);for(var e=localStorage.length-1;0<=e;e--){var g=localStorage.key(e);0===g.indexOf(this.STORAGE_PREFIX)&&localStorage.removeItem(g)}a&&
 a(OK)};
 EncryptedCache.prototype[api.changeCredentials]=function(a,c,b){try{WL.Validators.validateArguments(["string",WL.Validators.validateFunctionOrNull,WL.Validators.validateFunctionOrNull],arguments,"WL.EncryptedCache.changeCredentials")}catch(e){console.log(e);if(b)return b(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}if(void 0===a||""===a){console.log("Error: new_credentials is undefined or empty.");if(b)return b(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}if(this.keyCreationContext){if(b)return b(ERROR_KEY_CREATION_IN_PROGRESS);throw ERROR_KEY_CREATION_IN_PROGRESS;
-}if(!this.DPK){if(b)return b(ERROR_EOC_CLOSED);throw ERROR_EOC_CLOSED;}this.keyCreationContext={credentials:a,salt:""+this[api.random](),onCompleteHandler:c,onErrorHandler:b};var f=this;this[api.keygen].deriveKey(this.keyCreationContext.credentials,this.keyCreationContext.salt,this.CBK_KEY_DERIVATION_ITERATIONS,32,function(a){var b=[MD5(""+f[api.random]())];f.encryptor.rawEncrypt(f.DPK,a,b[0],function(a){localStorage.setItem(f.CIPHER_KEY,a);localStorage.setItem(f.SALT_KEY,f.keyCreationContext.salt);
-a=f.keyCreationContext.onCompleteHandler;this.keyCreationContext=f.keyCreationContext=null;a&&a(OK)},function(a){console.log(a);a=f.keyCreationContext.onErrorHandler;this.keyCreationContext=f.keyCreationContext=null;if(a)a(ERROR_COULD_NOT_GENERATE_KEY);else throw ERROR_COULD_NOT_GENERATE_KEY;})},function(a){console.log(a);a=f.keyCreationContext.onErrorHandler;this.keyCreationContext=f.keyCreationContext=null;if(a)a(ERROR_COULD_NOT_GENERATE_KEY);else throw ERROR_COULD_NOT_GENERATE_KEY;})};
-EncryptedCache.prototype[api.write]=function(a,c,b,e){try{WL.Validators.validateArguments(["string",WL.Validators.validateStringOrNull,WL.Validators.validateFunctionOrNull,WL.Validators.validateFunctionOrNull],arguments,"WL.EncryptedCache.write")}catch(f){console.log(f);if(e)return e(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}if(void 0===a||""===a){console.log("Error: key is undefined or empty.");if(e)return e(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}if(!this.DPK)return e(ERROR_EOC_CLOSED);
+}if(!this.DPK){if(b)return b(ERROR_EOC_CLOSED);throw ERROR_EOC_CLOSED;}this.keyCreationContext={credentials:a,salt:""+this[api.random](),onCompleteHandler:c,onErrorHandler:b};var g=this;this[api.keygen].deriveKey(this.keyCreationContext.credentials,this.keyCreationContext.salt,this.CBK_KEY_DERIVATION_ITERATIONS,32,function(a){var b=[MD5(""+g[api.random]())];g.encryptor.rawEncrypt(g.DPK,a,b[0],function(a){localStorage.setItem(g.CIPHER_KEY,a);localStorage.setItem(g.SALT_KEY,g.keyCreationContext.salt);
+a=g.keyCreationContext.onCompleteHandler;this.keyCreationContext=g.keyCreationContext=null;a&&a(OK)},function(a){console.log(a);a=g.keyCreationContext.onErrorHandler;this.keyCreationContext=g.keyCreationContext=null;if(a)a(ERROR_COULD_NOT_GENERATE_KEY);else throw ERROR_COULD_NOT_GENERATE_KEY;})},function(a){console.log(a);a=g.keyCreationContext.onErrorHandler;this.keyCreationContext=g.keyCreationContext=null;if(a)a(ERROR_COULD_NOT_GENERATE_KEY);else throw ERROR_COULD_NOT_GENERATE_KEY;})};
+EncryptedCache.prototype[api.write]=function(a,c,b,e){try{WL.Validators.validateArguments(["string",WL.Validators.validateStringOrNull,WL.Validators.validateFunctionOrNull,WL.Validators.validateFunctionOrNull],arguments,"WL.EncryptedCache.write")}catch(g){console.log(g);if(e)return e(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}if(void 0===a||""===a){console.log("Error: key is undefined or empty.");if(e)return e(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}if(!this.DPK)return e(ERROR_EOC_CLOSED);
 a=SHA256(a);if(null===c){if(localStorage.removeItem(this.STORAGE_PREFIX+a),b)return b(OK)}else{var l=[MD5(a+this[api.random]())],k=this.STORAGE_PREFIX;this.encryptor.rawEncrypt(Base64.encode(c),this.DPK,l[0],function(c){localStorage.setItem(k+a,c);b&&b(OK)},e)}};
 EncryptedCache.prototype[api.remove]=function(a,c,b){try{WL.Validators.validateArguments(["string",WL.Validators.validateFunctionOrNull,WL.Validators.validateFunctionOrNull],arguments,"WL.EncryptedCache.remove")}catch(e){console.log(e);if(b)return b(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}if(void 0===a||""===a){console.log("Error: key is undefined or empty.");if(b)return b(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}if(!this.DPK){if(b)return b(ERROR_EOC_CLOSED);throw ERROR_EOC_CLOSED;
 }this.write(a,null,c,b)};
 EncryptedCache.prototype[api.read]=function(a,c,b){try{WL.Validators.validateArguments(["string",WL.Validators.validateFunctionOrNull,WL.Validators.validateFunctionOrNull],arguments,"WL.EncryptedCache.read")}catch(e){console.log(e);if(b)return b(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}if(void 0===a||""===a){console.log("Error: key is undefined or empty.");if(b)return b(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}if(!this.DPK){if(b)return b(ERROR_EOC_CLOSED);throw ERROR_EOC_CLOSED;
-}var a=SHA256(a),f=localStorage.getItem(this.STORAGE_PREFIX+a);if(null===f){if(c)return c(null)}else this.encryptor.rawDecrypt(f,this.DPK,function(a){a=Base64.decode(a);c&&c(a)},b)};function NativeEncryptor(){}
-NativeEncryptor.prototype.rawEncrypt=function(a,c,b,e,f){try{WL.Validators.validateArguments(["string","string","object","function","function"],arguments,"NativeEncryptor.prototype.rawEncrypt")}catch(l){console.log(l);if(f)return f(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}var k=a,d=c,m=a2h(b);if(!d||!k||!m||null===d||null===k||null===m||1>d.length||1>k.length||1>m.length){if(f)return f(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}cordova.exec(e,function(){f()},"SecurityPlugin",
+}var a=SHA256(a),g=localStorage.getItem(this.STORAGE_PREFIX+a);if(null===g){if(c)return c(null)}else this.encryptor.rawDecrypt(g,this.DPK,function(a){a=Base64.decode(a);c&&c(a)},b)};function NativeEncryptor(){}
+NativeEncryptor.prototype.rawEncrypt=function(a,c,b,e,g){try{WL.Validators.validateArguments(["string","string","object","function","function"],arguments,"NativeEncryptor.prototype.rawEncrypt")}catch(l){console.log(l);if(g)return g(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}var k=a,d=c,m=a2h(b);if(!d||!k||!m||null===d||null===k||null===m||1>d.length||1>k.length||1>m.length){if(g)return g(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}cordova.exec(e,function(){g()},"SecurityPlugin",
 "encrypt",[d,k,m])};
-NativeEncryptor.prototype.rawDecrypt=function(a,c,b,e){try{WL.Validators.validateArguments(["string","string","function","function"],arguments,"NativeEncryptor.prototype.rawDecrypt")}catch(f){console.log(f);if(e)return e(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}var l=JSON.parse(a),k=l.ct,d=c,m=l.iv;if(!d||!k||!m||null===d||null===k||null===m||1>d.length||1>k.length||1>m.length){if(e)return e(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}cordova.exec(b,function(a){console.log(a);
+NativeEncryptor.prototype.rawDecrypt=function(a,c,b,e){try{WL.Validators.validateArguments(["string","string","function","function"],arguments,"NativeEncryptor.prototype.rawDecrypt")}catch(g){console.log(g);if(e)return e(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}var l=JSON.parse(a),k=l.ct,d=c,m=l.iv;if(!d||!k||!m||null===d||null===k||null===m||1>d.length||1>k.length||1>m.length){if(e)return e(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}cordova.exec(b,function(a){console.log(a);
 e(ERROR_UNKNOWN)},"SecurityPlugin","decrypt",[d,l.ct,m])};function NativePBKDF2(){}
-NativePBKDF2.prototype.deriveKey=function(a,c,b,e,f,l){try{WL.Validators.validateArgument("string",a,"NativePBKDF2.prototype.deriveKey");WL.Validators.validateArgument("string",c,"NativePBKDF2.prototype.deriveKey");WL.Validators.validateArgument(function(a){"function"!==typeof a&&this.logAndThrow("Invalid value '"+WLJSX.Object.toJSON(a)+"' ("+typeof a+"), expected type 'function' for parameter onCompleteHandler.","NativePBKDF2.prototype.deriveKey")},f,"");WL.Validators.validateArgument(function(a){"function"!==
+NativePBKDF2.prototype.deriveKey=function(a,c,b,e,g,l){try{WL.Validators.validateArgument("string",a,"NativePBKDF2.prototype.deriveKey");WL.Validators.validateArgument("string",c,"NativePBKDF2.prototype.deriveKey");WL.Validators.validateArgument(function(a){"function"!==typeof a&&this.logAndThrow("Invalid value '"+WLJSX.Object.toJSON(a)+"' ("+typeof a+"), expected type 'function' for parameter onCompleteHandler.","NativePBKDF2.prototype.deriveKey")},g,"");WL.Validators.validateArgument(function(a){"function"!==
 typeof a&&this.logAndThrow("Invalid value '"+WLJSX.Object.toJSON(a)+"' ("+typeof a+"), expected type 'function' for parameter onErrorHandler.","NativePBKDF2.prototype.deriveKey")},l,"");if(!("number"===typeof b&&Math.ceil(b)===Math.floor(b)))throw"Error: Invalid invocation of method NativePBKDF2.prototype.deriveKey; Invalid parameter type for argument 'num_iterations'";if(!("number"===typeof e&&Math.ceil(e)===Math.floor(e)))throw"Error: Invalid invocation of method NativePBKDF2.prototype.deriveKey; Invalid parameter type for argument 'num_bytes'";
-}catch(k){console.log(k);if(l)return l(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}if(!a||null===a||!c||null===c||!b||null===b||!e||null===e||1>c.length||0>parseInt(b,10))return l(ERROR_INVALID_PARAMETER);cordova.exec(f,function(a){console.log(a);l(ERROR_UNKNOWN)},"SecurityPlugin","keygen",[a,c,b,e])};function WebBasedEncryptor(){}
-WebBasedEncryptor.prototype.rawEncrypt=function(a,c,b,e,f){var l=null;try{b=sjcl.codec.hex.toBits(a2h(b)),l=sjcl.json.encrypt(c,a,{iv:b})}catch(k){console.log(k);if(f)return f(ERROR_UNKNOWN);throw ERROR_UNKNOWN;}e&&e(l)};WebBasedEncryptor.prototype.rawDecrypt=function(a,c,b,e){var f=null;try{f=sjcl.json.decrypt(c,a)}catch(l){console.log(l);if(e)return e(ERROR_UNKNOWN);throw ERROR_UNKNOWN;}b&&b(f)};function WebBasedPBKDF2(){}
-WebBasedPBKDF2.prototype.deriveKey=function(a,c,b,e,f,l){var k=null;try{k=sjcl.misc.pbkdf2(a,c,b,8*e)}catch(d){console.log(d);if(l)return l(ERROR_UNKNOWN);throw ERROR_UNKNOWN;}f&&f(binb2hex(k))};window.WL.EncryptedCache=new EncryptedCache;})();
+}catch(k){console.log(k);if(l)return l(ERROR_INVALID_PARAMETER);throw ERROR_INVALID_PARAMETER;}if(!a||null===a||!c||null===c||!b||null===b||!e||null===e||1>c.length||0>parseInt(b,10))return l(ERROR_INVALID_PARAMETER);cordova.exec(g,function(a){console.log(a);l(ERROR_UNKNOWN)},"SecurityPlugin","keygen",[a,c,b,e])};function WebBasedEncryptor(){}
+WebBasedEncryptor.prototype.rawEncrypt=function(a,c,b,e,g){var l=null;try{b=sjcl.codec.hex.toBits(a2h(b)),l=sjcl.json.encrypt(c,a,{iv:b})}catch(k){console.log(k);if(g)return g(ERROR_UNKNOWN);throw ERROR_UNKNOWN;}e&&e(l)};WebBasedEncryptor.prototype.rawDecrypt=function(a,c,b,e){var g=null;try{g=sjcl.json.decrypt(c,a)}catch(l){console.log(l);if(e)return e(ERROR_UNKNOWN);throw ERROR_UNKNOWN;}b&&b(g)};function WebBasedPBKDF2(){}
+WebBasedPBKDF2.prototype.deriveKey=function(a,c,b,e,g,l){var k=null;try{k=sjcl.misc.pbkdf2(a,c,b,8*e)}catch(d){console.log(d);if(l)return l(ERROR_UNKNOWN);throw ERROR_UNKNOWN;}g&&g(binb2hex(k))};window.WL.EncryptedCache=new EncryptedCache;})();
 
 
 /**
@@ -8930,6 +9231,10 @@ WL.BusyIndicator = WLJSX.Class.create({
 		 */
 		this.clearTriggers = function()
 		{
+			for (var triggerObject in this.triggersContainer) 
+			{   					
+				this.triggersContainer[triggerObject].preDestroy();
+			}					
 			this.triggersContainer = {};
 		};
 		
@@ -10506,11 +10811,10 @@ __DeviceContextTransmission = function() {
 	};
 	
 	// num should be >= 0
+	
+	//Calculates the minimum number of bits required to store 'num'
 	this.getNumBitsToEncode = function(num) {
-		if (num == 0)
-			return 0;
-		
-		return Math.ceil(Math.log(num) / Math.LN2);
+		return Math.floor(Math.log(num + 1) / Math.LN2);
 	};	
 
 };
@@ -10736,14 +11040,14 @@ function __Geo() {
 		function successFn(pos) {
 			pos = fixPosition(pos);
 			
-			function updateRequired() {
+			function updateRequired(checkPosition) {
 				if (watchId == null)
 					return false; // update is required only if watching
 				var lastPosition = WL.Device.context.Geo;
 				if (lastPosition) {  // if a reading was already fetched, check if we need to update it
 					if (pos.timestamp < lastPosition.timestamp)
 						return false;
-					if (pos.timestamp === lastPosition.timestamp && pos.longitude === lastPosition.longitude && 
+					if (checkPosition && pos.timestamp === lastPosition.timestamp && pos.longitude === lastPosition.longitude && 
 							pos.latitude === lastPosition.latitude && pos.altitude === lastPosition.altitude &&
 							pos.accuracy === lastPosition.accuracy)
 						return false; // same reading - no need to update
@@ -10754,8 +11058,9 @@ function __Geo() {
 				return true;	 
 			};
 
+			var doUpdate = updateRequired(true);
 			
-			if (updateRequired()) {  		// if needed, change the device context
+			if (doUpdate) {  		// if needed, change the device context
 				updateDeviceContext(pos);
 			}
 			try{
@@ -10764,7 +11069,7 @@ function __Geo() {
 			catch(e) {
 				  WL.Logger.error("Exception thrown from Geo location acquisition callback: " + e);
 			}
-			if (updateRequired()) {   		// if (still) needed - evaluate the triggers   (needs a second check since the policy might have been changed by the callback)
+			if (doUpdate && updateRequired(false)) {   		// if (still) needed - evaluate the triggers   (needs a second check since the policy might have been changed by the callback)
 				triggersManager.locationAcquired(pos,"Geo"); 
 			}
 		};
@@ -11085,6 +11390,10 @@ __Wifi = function() {
 			location.accessPoints = locationData.accessPoints;
 		if (!WLJSX.Object.isUndefined(locationData.connectedAccessPoint))
 			location.connectedAccessPoint = locationData.connectedAccessPoint;
+		
+		//Save wifi acquisition timestamp to the device context
+		location.timestamp = locationData.timestamp;
+		
 		WL.Device.context.Wifi = location;
 		
 		WL.Client.__deviceContextTransmission.updateSensor("Wifi");
@@ -12492,7 +12801,37 @@ WL.Geo.nearestPointOnLineSegment = geoUtilities.nearestPointOnLineSegment;
  *
 */
 (function(WL) {
-	
+
+var PositionError = function(code, message) {
+    this.code = code || null;
+    this.message = message || '';
+};
+
+PositionError.PERMISSION_DENIED = 1;
+PositionError.POSITION_UNAVAILABLE = 2;
+PositionError.TIMEOUT = 3;
+		
+var Position = function(coords, timestamp) {
+    if (coords) {
+        this.coords = new Coordinates(coords.latitude, coords.longitude, coords.altitude, coords.accuracy, coords.heading, coords.velocity, coords.altitudeAccuracy);
+    } else {
+        this.coords = new Coordinates();
+    }
+    this.timestamp = (timestamp !== undefined) ? timestamp : new Date();
+};
+
+var Coordinates = function(lat, lng, alt, acc, head, vel, altacc) {
+    this.latitude = lat;
+    this.longitude = lng;
+    this.accuracy = acc;
+    this.altitude = (alt !== undefined ? alt : null);
+    this.heading = (head !== undefined ? head : null);
+    this.speed = (vel !== undefined ? vel : null);
+    if (this.speed === 0 || this.speed === null) {
+        this.heading = NaN;
+   }
+   this.altitudeAccuracy = (altacc !== undefined) ? altacc : null;
+};
 
 function __ExtendedGeolocation() {
     var lastPosition = null; // reference to last known (cached) position returned
@@ -12927,14 +13266,18 @@ WL.App.__update = function(shouldUpdateSilently) {
 };
 
 WL.App._showDirectUpdateErrorMessage = function(message) {
-	
-	WL.SimpleDialog.show(WL.ClientMessages.directUpdateErrorTitle, message, [ {
+	var buttons = [ {
         text : WL.ClientMessages.reload,
         handler : WL.Client.reloadApp
-    }, {
-        text : WL.ClientMessages.close,
-        handler : function () {}
-    } ]);
+    }];
+	
+	if (WL.Client.isShowCloseButtonOnDirectUpdateFailure()) {
+		buttons.push({
+	        text : WL.ClientMessages.close,
+	        handler : function () {}
+	    });
+	}
+    WL.SimpleDialog.show(WL.ClientMessages.directUpdateErrorTitle, message, buttons);
 };
 
 function setWLUrl(serverURL) {
@@ -12992,12 +13335,12 @@ __WLNativePage = function() {
         // prevent calling the show twice until it the call back done
         if (__nativePageCallback === null) {
             __nativePageCallback = callback;
-            cordova.exec(null, null, "NativePage", "show", [ this._getCookiesForNative(), className, data ]);
+            cordova.exec(this.onNativePageClose, null, "NativePage", "show", [ this._getCookiesForNative(), className, data ]);
         } else {
             throw new Error("A native page is already loaded. Cannot call another native page.");
         }
     };
-
+    
     /**
      * Internal use, should never be called directly - called from the native
      * android activity java code.
@@ -13726,7 +14069,8 @@ __WLPush = function() {
     };
 
     this.__isDeviceSupportPush = function() {
-        return typeof device.version != undefined && parseFloat(device.version.substr(0, 3)) >= 2.2;
+    	var androidSDKVersion = WL.Client.__getAndroidSDKVersion();
+        return  androidSDKVersion != undefined && parseInt(androidSDKVersion) >= 8;
     };
 
     this.__updateToken = function(serverToken) {

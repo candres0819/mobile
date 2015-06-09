@@ -45,11 +45,11 @@
 	//busyOptions: {text: "Loading..."}
 };
 
-//if (window.addEventListener) {
-//	window.addEventListener('load', function() { WL.Client.init(wlInitOptions); }, false);
-//} else if (window.attachEvent) {
-//	window.attachEvent('onload',  function() { WL.Client.init(wlInitOptions); });
-//}
-$(document).ready(function() {
-	wlCommonInit();
-});
+if (window.addEventListener) {
+	window.addEventListener('load', function() { WL.Client.init(wlInitOptions); }, false);
+} else if (window.attachEvent) {
+	window.attachEvent('onload',  function() { WL.Client.init(wlInitOptions); });
+}
+//$(document).ready(function() {
+//	wlCommonInit();
+//});
