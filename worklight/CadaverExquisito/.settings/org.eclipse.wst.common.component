@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?><project-modules id="moduleCoreId" project-version="1.5.0">
+    <wb-module deploy-name="CadaverExquisito">
+        <wb-resource deploy-path="/" source-path="/apps/TestEla/common"/>
+        <wb-resource deploy-path="/" source-path="/apps/TestEla/android"/>
+        <wb-resource deploy-path="/" source-path="/apps/CadaverExquisito/android"/>
+        <property name="context-root" value="CadaverExquisito"/>
+    </wb-module>
+</project-modules>
