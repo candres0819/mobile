@@ -38,7 +38,7 @@ function wlCommonInit(){
 		error : function(data) {
 
 		}
-	});load();
+	});
 }
 
 /* JavaScript content from js/main.js in folder android */
